@@ -1,14 +1,17 @@
 # Claude Style for DeepSeek Harness - installer (Windows).
 #
-#   .\install.ps1                       install into the "web" profile from GitHub
+#   .\install.ps1                       install into the detected profile
 #   .\install.ps1 -Profile desktop      install into the desktop profile
 #   .\install.ps1 -Local                install this working copy instead of GitHub
 #   .\install.ps1 -DryRun               print the command, run nothing
 #
+# The profile is resolved in this order: -Profile, $env:DSH_PROFILE, the only
+# profile under your DSH home, then "web".
+#
 # The installer runs one `dsh plugin` command. It never edits a profile by hand.
 [CmdletBinding()]
 param(
-  [string]$Profile = 'web',
+  [string]$Profile = '',
   [string]$Spec = 'github:devopshelper/claude-style-deepseek',
   [switch]$Local,
   [switch]$DryRun
@@ -22,6 +25,19 @@ if (-not (Get-Command dsh -ErrorAction SilentlyContinue)) {
   exit 1
 }
 
+function Resolve-Profile {
+  if ($Profile -ne '') { return $Profile }
+  if ($env:DSH_PROFILE) { return $env:DSH_PROFILE }
+  $HomeDir = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $HOME '.dsh' }
+  $Profiles = Join-Path $HomeDir 'profiles'
+  if (Test-Path $Profiles) {
+    $Names = @(Get-ChildItem $Profiles -Directory | Select-Object -ExpandProperty Name)
+    if ($Names.Count -eq 1) { return $Names[0] }
+  }
+  return 'web'
+}
+
+$Profile = Resolve-Profile
 $Target = if ($Local) { $Repo } else { $Spec }
 $Command = @('plugin', '--profile', $Profile, 'add', $Target)
 

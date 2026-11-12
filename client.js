@@ -298,7 +298,7 @@ window.__ModuleLoader__.load({
       'settings.colors.description': 'Warm charcoal in dark, warm paper in light, with the Claude accent on links, primary actions and the running status.',
       'settings.flow.title': 'Claude transcript',
       'settings.flow.description': 'Prompt blocks, a thinking window that steps live reasoning two lines at a time, one-line tool rows and indented step summaries.',
-      'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. The thinking window follows a reasoning block you expand while it is still streaming, and stops when the block settles.',
+      'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone.',
       'settings.on': 'On',
       'settings.off': 'Off',
       'label.title': 'Claude Style',
@@ -313,7 +313,7 @@ window.__ModuleLoader__.load({
       'settings.colors.description': '深色下是暖炭黑，浅色下是暖纸色，链接、主要按钮与运行状态使用 Claude 的橙色。',
       'settings.flow.title': 'Claude 会话排版',
       'settings.flow.description': '提示块、正在流式输出时按两行步进的思考窗口、单行工具行与缩进的步骤摘要。',
-      'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考窗口只作用于你在流式输出期间展开的思考块，块结束后自动停止。',
+      'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。',
       'settings.on': '开',
       'settings.off': '关',
       'label.title': 'Claude 风格',
@@ -370,13 +370,17 @@ window.__ModuleLoader__.load({
      * the `height` and `transform` it owns on two host elements. It never
      * re-parents a node, never inserts one, and stops on reduced motion.
      * ------------------------------------------------------------------ */
-    const REASON_ROW = '[data-variant="think"][data-state="running"][data-expanded]';
+    const THINK_ROW = '[data-variant="think"]';
     const REASON_WINDOW_ATTR = 'data-cc-reason-window';
     const REASON_TEXT_ATTR = 'data-cc-reason-text';
     const REASON_CAPPED_ATTR = 'data-cc-reason-capped';
+    const DISCLOSURE_CONTROL = '[data-disclosure-row][data-expandable]';
 
     function createReasonWindow() {
       const states = new Map();
+      const managed = new Set();
+      const touched = new WeakSet();
+      let autoClicking = false;
       let observer = null;
       let frame = 0;
       let stopped = true;
@@ -532,18 +536,91 @@ window.__ModuleLoader__.load({
         frame = 0;
         if (stopped) return;
         if (typeof document === 'undefined' || document.body === null) return;
-        if (!document.body.hasAttribute(FLOW_ATTR) || (reduced !== null && reduced.matches)) {
+        if (!document.body.hasAttribute(FLOW_ATTR)) {
           clearAll();
           return;
         }
         /* Scan the transcript, not the whole document: the flow slot is the
            only place a reasoning row can appear. */
         const scope = document.querySelector('[data-slot="conversation.chat.flow"]') ?? document.body;
-        const active = new Set(scope.querySelectorAll(REASON_ROW));
-        for (const row of [...states.keys()]) {
-          if (!active.has(row) || !row.isConnected) clear(row);
+        const rows = scope.querySelectorAll(THINK_ROW);
+
+        /* Keep a live thinking row open while it streams, then fold it back
+           once it settles: expanded ⇔ running, the same rule the reason
+           window builds on. Rows the reader opened or closed by hand are
+           never touched again (see `touched`). */
+        for (const row of rows) {
+          if (!row.isConnected) {
+            managed.delete(row);
+            continue;
+          }
+          const running = row.getAttribute('data-state') === 'running';
+          const expanded = row.hasAttribute('data-expanded');
+          const isManaged = managed.has(row);
+          if (running && !expanded && !isManaged && !touched.has(row)) {
+            if (clickRow(row)) managed.add(row);
+            continue;
+          }
+          if (!running && expanded && isManaged) {
+            if (touched.has(row)) {
+              managed.delete(row);
+              continue;
+            }
+            clickRow(row);
+            managed.delete(row);
+            continue;
+          }
+          if (!running && isManaged && !expanded) managed.delete(row);
+          if (running && isManaged && !expanded && touched.has(row)) managed.delete(row);
         }
-        for (const row of active) run(row);
+
+        if (reduced !== null && reduced.matches) {
+          clearAll();
+          return;
+        }
+
+        const live = new Set();
+        for (const row of rows) {
+          if (row.getAttribute('data-state') === 'running' && row.hasAttribute('data-expanded')) live.add(row);
+        }
+        for (const row of [...states.keys()]) {
+          if (!live.has(row) || !row.isConnected) clear(row);
+        }
+        for (const row of live) run(row);
+      };
+
+      /** Click the disclosure row so the host's own toggle runs. */
+      const clickRow = (row) => {
+        if (!row.isConnected) return false;
+        const control =
+          row.querySelector(DISCLOSURE_CONTROL) ?? row.querySelector('[data-disclosure-row]');
+        if (control === null || typeof control.click !== 'function') return false;
+        autoClicking = true;
+        try {
+          control.click();
+        } catch (error) {
+          return false;
+        } finally {
+          autoClicking = false;
+        }
+        return true;
+      };
+
+      /** Remember a hand toggle so an automatic one never fights the reader. */
+      const markTouched = (event) => {
+        if (autoClicking) return;
+        const target = event.target;
+        if (target === null || target === undefined || typeof target.closest !== 'function') return;
+        const row = target.closest(THINK_ROW);
+        if (row !== null) touched.add(row);
+      };
+
+      /** Close the rows this engine opened, best effort, on unload. */
+      const release = () => {
+        for (const row of [...managed]) {
+          if (row.isConnected && row.hasAttribute('data-expanded') && !touched.has(row)) clickRow(row);
+        }
+        managed.clear();
       };
 
       const schedule = () => {
@@ -563,11 +640,15 @@ window.__ModuleLoader__.load({
             attributes: true,
             attributeFilter: ['data-state', 'data-expanded'],
           });
+          document.addEventListener('click', markTouched, true);
+          document.addEventListener('keydown', markTouched, true);
           schedule();
         },
         stop() {
           if (stopped) return;
           stopped = true;
+          document.removeEventListener('click', markTouched, true);
+          document.removeEventListener('keydown', markTouched, true);
           if (observer !== null) {
             observer.disconnect();
             observer = null;
@@ -576,6 +657,7 @@ window.__ModuleLoader__.load({
             window.cancelAnimationFrame(frame);
             frame = 0;
           }
+          release();
           clearAll();
         },
       };

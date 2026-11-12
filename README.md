@@ -40,7 +40,8 @@ In the transcript:
 
 - input becomes a full-measure prompt block: `>` marker, one accent rule, no bubble
 - reasoning becomes a dim italic thinking row on an accent rail, expanding into a soft box
-- while that box is open and still streaming, it is clipped to a window and its text steps upward two lines at a time, so the newest lines stay in view; the clip is removed when the block settles
+- while a thinking block streams, its row opens by itself and is clipped to a window whose text steps upward two lines at a time, so the newest lines stay in view; when the block settles the row folds back and the full text is one click away
+- a hand toggle always wins: a row you open or close yourself is never touched again
 - every tool call is one monospace line with a bullet, the localized tool name and the command or path; output hangs off a thin rail underneath
 - a finished turn's steps collapse into one line whose bullet becomes a chevron on hover, with an indented body when opened
 
@@ -61,7 +62,10 @@ The installer runs one command for you:
 ./install.sh --profile web
 ```
 
-Use your own profile name. Desktop app users: `-Profile desktop` / `--profile desktop`.
+The installer picks the profile for you: `-Profile` / `--profile` wins, then
+`DSH_PROFILE`, then the only profile under your DSH home, then `web`. Pass the flag
+when several profiles exist. The desktop app keeps its own `desktop` profile:
+`-Profile desktop` / `--profile desktop`.
 
 You can skip the script and add the package directly:
 
@@ -113,10 +117,10 @@ animation is skipped under `prefers-reduced-motion: reduce`.
   `data-message-bubble`, `data-variant="think"`, `data-tool`, `data-step-process`,
   `data-disclosure-row`, `data-markdown-variant`). The hashed class names beside them
   change between builds and are not used.
-- The thinking window is the only DOM write. It runs on
-  `[data-variant="think"][data-state="running"][data-expanded]` rows only, sets and
-  then removes its own attributes plus the `height` and `transform` it owns, and stops
-  on unload, on reduced motion, or when the transcript layer is switched off.
+- The thinking window is the only DOM write. It opens and folds the live thinking
+  row through the host's own disclosure toggle, then sets and removes its own
+  attributes plus the `height` and `transform` it owns on that row. It stops on
+  unload, on reduced motion, or when the transcript layer is switched off.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
 

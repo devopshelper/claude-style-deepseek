@@ -1,15 +1,18 @@
 #!/usr/bin/env sh
 # Claude Style for DeepSeek Harness - installer (macOS / Linux).
 #
-#   ./install.sh                       install into the "web" profile from GitHub
+#   ./install.sh                       install into the detected profile
 #   ./install.sh --profile desktop     install into the desktop profile
 #   ./install.sh --local               install this working copy instead of GitHub
 #   ./install.sh --dry-run             print the command, run nothing
 #
+# The profile is resolved in this order: --profile, $DSH_PROFILE, the only
+# profile under your DSH home, then "web".
+#
 # The installer runs one `dsh plugin` command. It never edits a profile by hand.
 set -eu
 
-PROFILE="${PROFILE:-web}"
+PROFILE="${PROFILE:-}"
 SPEC="${SPEC:-github:devopshelper/claude-style-deepseek}"
 LOCAL=0
 DRY_RUN=0
@@ -18,7 +21,7 @@ usage() {
   cat <<'EOF'
 Usage: ./install.sh [--profile <name>] [--local] [--dry-run]
 
-  --profile <name>   profile to install into (default: web, or $PROFILE)
+  --profile <name>   profile to install into (default: detected, then web)
   --local            install this checkout instead of the GitHub package
   --dry-run          print the command, run nothing
 EOF
@@ -59,6 +62,21 @@ if ! command -v dsh >/dev/null 2>&1; then
   echo "install.sh: dsh is not on PATH. Install DeepSeek Harness first." >&2
   exit 1
 fi
+
+if [ -z "$PROFILE" ]; then
+  if [ -n "${DSH_PROFILE:-}" ]; then
+    PROFILE="$DSH_PROFILE"
+  else
+    dsh_home="${DSH_HOME:-$HOME/.dsh}"
+    if [ -d "$dsh_home/profiles" ]; then
+      count=$(find "$dsh_home/profiles" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+      if [ "$count" -eq 1 ]; then
+        PROFILE=$(find "$dsh_home/profiles" -mindepth 1 -maxdepth 1 -type d | head -n 1 | sed 's#.*/##')
+      fi
+    fi
+  fi
+fi
+[ -n "$PROFILE" ] || PROFILE=web
 
 if [ "$LOCAL" -eq 1 ]; then
   TARGET=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
