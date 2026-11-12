@@ -50,32 +50,30 @@ Work details`). This plugin only restyles the summary line and its body.
 
 ## Install
 
-The installer runs one command for you:
+One line, no script, no download. Paste it into a terminal and refresh the app
+(`Ctrl+R`):
 
 ```powershell
-# Windows, from this checkout
-.\install.ps1 -Profile web
+# Windows desktop app
+dsh plugin --profile desktop add github:devopshelper/claude-style-deepseek
 ```
 
 ```bash
-# macOS / Linux, from this checkout
-./install.sh --profile web
-```
-
-The installer picks the profile for you: `-Profile` / `--profile` wins, then
-`DSH_PROFILE`, then the only profile under your DSH home, then `web`. Pass the flag
-when several profiles exist. The desktop app keeps its own `desktop` profile:
-`-Profile desktop` / `--profile desktop`.
-
-You can skip the script and add the package directly:
-
-```bash
+# browser / dsh web profile
 dsh plugin --profile web add github:devopshelper/claude-style-deepseek
 ```
 
-After it installs, refresh the page (`Ctrl+R`). If the theme does not appear, restart
-DeepSeek Harness once. On a checkout, `.\install.ps1 -Local` installs the working copy
-instead of the GitHub package, which is what to use while editing.
+`dsh` is put on your PATH by the DeepSeek Harness installer. The only variable is
+the profile name: the desktop app keeps its own `desktop` profile, a browser session
+uses `web`. If the theme does not appear after the refresh, restart DeepSeek Harness
+once.
+
+Working on the plugin itself? Install the checkout instead of GitHub and the profile
+links the directory:
+
+```powershell
+dsh plugin --profile desktop add C:\path\to\claude-style-deepseek
+```
 
 > Installing into a profile applies to every session in that profile. Keep one theme
 > bundle selected at a time.
