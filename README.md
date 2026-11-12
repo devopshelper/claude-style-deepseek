@@ -1,0 +1,148 @@
+# Claude Style for DeepSeek Harness
+
+**Claude Code's quiet terminal, drawn over the DeepSeek Harness transcript.**
+Warm charcoal or warm paper, one line per tool call, a thinking block that scrolls
+like a live log, and every finished step folded into one expandable line.
+
+[![license](https://img.shields.io/badge/license-MIT-D97757)](LICENSE)
+[![platform](https://img.shields.io/badge/platform-DeepSeek%20Harness%20Web-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
+[![dsh](https://img.shields.io/badge/dsh-%E2%89%A5%200.2.2--rc.1-8f8b80)](#compatibility)
+[![PRs](https://img.shields.io/badge/PRs-welcome-2EA44F)](#contributing)
+
+Most Claude Code skins stop at the palette and carry the old chat chrome with it:
+bubbles, cards, borders, glow. This plugin takes the transcript apart instead. The
+conversation reads the way the terminal prints it.
+
+```text
+> make the sidebar quieter, keep the transcript
+
+  Done. The sidebar now paints the same warm surface as the canvas.
+
+● Think   the previous card kept a border on every row, which is what reads as
+│         noise. One rule on the process group is enough.
+│         ...
+⏺ Read    src/chat/ChatView.module.css
+│         ⎿ 448 lines
+⏺ Edit    src/chat/ChatView.module.css
+● Thought, read 3 files, ran 1 command                              12s  ⌄
+```
+
+## What it changes
+
+Two independent layers, both switchable from **Settings -> Plugins -> Claude Style**.
+
+| Layer | Effect |
+| --- | --- |
+| **Palette** | Alias-token overrides for the Harness theme service. Warm charcoal `#1f1e1c` in dark, warm paper `#faf9f5` in light, muted warm text, Claude's `#d97757` on links, primary actions, the running status and diff markers. Light and dark carry their own values, so `system` keeps working. |
+| **Transcript** | A stylesheet over the attributes the Chat surface already publishes. No shipped class name, stylesheet or component is copied or replaced. |
+
+In the transcript:
+
+- input becomes a full-measure prompt block: `>` marker, one accent rule, no bubble
+- reasoning becomes a dim italic thinking row on an accent rail, expanding into a soft box
+- while that box is open and still streaming, it is clipped to a window and its text steps upward two lines at a time, so the newest lines stay in view; the clip is removed when the block settles
+- every tool call is one monospace line with a bullet, the localized tool name and the command or path; output hangs off a thin rail underneath
+- a finished turn's steps collapse into one line whose bullet becomes a chevron on hover, with an indented body when opened
+
+Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
+Work details`). This plugin only restyles the summary line and its body.
+
+## Install
+
+The installer runs one command for you:
+
+```powershell
+# Windows, from this checkout
+.\install.ps1 -Profile web
+```
+
+```bash
+# macOS / Linux, from this checkout
+./install.sh --profile web
+```
+
+Use your own profile name. Desktop app users: `-Profile desktop` / `--profile desktop`.
+
+You can skip the script and add the package directly:
+
+```bash
+dsh plugin --profile web add github:devopshelper/claude-style-deepseek
+```
+
+After it installs, refresh the page (`Ctrl+R`). If the theme does not appear, restart
+DeepSeek Harness once. On a checkout, `.\install.ps1 -Local` installs the working copy
+instead of the GitHub package, which is what to use while editing.
+
+> Installing into a profile applies to every session in that profile. Keep one theme
+> bundle selected at a time.
+
+## Settings
+
+**Settings -> Plugins -> Claude Style** has two switches:
+
+- **Claude palette** retracts the token layer, leaving your current theme's colors.
+- **Claude transcript** drops the stylesheet and the thinking-window engine, leaving
+  the shipped chat untouched.
+
+Both choices persist in the browser's `localStorage` for the profile you are using.
+
+## Tuning
+
+The thinking window reads its numbers from CSS custom properties on
+`body[data-cc-flow]`, so you can retune them from a stylesheet without touching the
+module:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `--cc-reason-window-cap` | `380px` | height ceiling of the live thinking window |
+| `--cc-reason-lines` | `2` | lines travelled per step |
+| `--cc-reason-hold` | `840ms` | rest between two steps |
+| `--cc-reason-fade` | `26px` | depth of the top and bottom fade |
+| `--cc-reason-duration` | `500ms` | glide of one step |
+| `--cc-reason-ease` | `cubic-bezier(.22,.61,.36,1)` | curve of one step |
+
+The reading measure is `--dsh-chat-user-width` (`min(820px, 100%)`). The whole
+animation is skipped under `prefers-reduced-motion: reduce`.
+
+## How it works
+
+- The palette is a **token layer** (`ctx.theme.overrideTokens`), not a registered
+  theme. It stacks over whatever theme is selected, composes with light/dark/system,
+  and disappears cleanly when switched off.
+- The transcript skin targets documented Chat attributes (`data-chat-flow-kind`,
+  `data-message-bubble`, `data-variant="think"`, `data-tool`, `data-step-process`,
+  `data-disclosure-row`, `data-markdown-variant`). The hashed class names beside them
+  change between builds and are not used.
+- The thinking window is the only DOM write. It runs on
+  `[data-variant="think"][data-state="running"][data-expanded]` rows only, sets and
+  then removes its own attributes plus the `height` and `transform` it owns, and stops
+  on unload, on reduced motion, or when the transcript layer is switched off.
+- No Harness Client package is imported: `react` comes from the page's module table,
+  every other control is markup and tokens.
+
+## Compatibility
+
+- DeepSeek Harness `>= 0.2.2-rc.1`, `web` client platform.
+- Any theme selected in Appearance; the token layer stacks over it. If another plugin
+  also overrides tokens, the layer registered last wins.
+- Uninstall: `dsh plugin --profile <profile> remove claude-style-deepseek`, or remove
+  the bundle from **Settings -> Plugins**.
+
+## Credits
+
+- The thinking window follows the reasoning window in
+  [`dsh-claude-style`](https://github.com/Nwflower/dsh-claude-style) (MIT); this is a
+  reimplementation, not a copy of its engine.
+- Accent sampled from Claude Code's terminal. Not affiliated with or endorsed by
+  Anthropic.
+
+## Contributing
+
+The plugin is plain JavaScript with no build step: `client.js` is the module the
+browser loads. Node's parser check (`node --check client.js`) and the package
+manifest are enough to validate a change before a refresh; there is no test runner in
+the repository.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
