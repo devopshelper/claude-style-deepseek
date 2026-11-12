@@ -68,6 +68,39 @@ the profile name: the desktop app keeps its own `desktop` profile, a browser ses
 uses `web`. If the theme does not appear after the refresh, restart DeepSeek Harness
 once.
 
+### No `dsh` on PATH?
+
+The desktop installer normally puts it there, but a skipped option, a moved install or
+a fresh shell can leave it out. Call the app's own launcher instead:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:devopshelper/claude-style-deepseek
+```
+
+Installed for all users, or somewhere else? Find the launcher first, then run it:
+
+```powershell
+$c = @("$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd","$env:ProgramFiles\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd") | Where-Object { Test-Path $_ } | Select-Object -First 1; $c; & $c plugin --profile desktop add github:devopshelper/claude-style-deepseek
+```
+
+To keep the command for good, add its folder to your user PATH once (open a new
+terminal afterwards):
+
+```powershell
+[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path','User') + ';' + (Split-Path $c), 'User')
+```
+
+### No desktop app at all
+
+The CLI is the same code the app bundles, published on npm. Install it, then add the
+plugin to the browser profile:
+
+```powershell
+npm install -g @deepseek-ai/dsh
+dsh plugin --profile web add github:devopshelper/claude-style-deepseek
+dsh web
+```
+
 Working on the plugin itself? Install the checkout instead of GitHub and the profile
 links the directory:
 
