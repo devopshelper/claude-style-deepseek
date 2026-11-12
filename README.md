@@ -40,7 +40,7 @@ In the transcript:
 
 - input becomes a full-measure prompt block: `>` marker, one accent rule, no bubble
 - reasoning becomes a dim italic thinking row on an accent rail, expanding into a soft box
-- while a thinking block streams, its row opens by itself and is clipped to a window whose text steps upward two lines at a time, so the newest lines stay in view; when the block settles the row folds back and the full text is one click away
+- while a thinking block streams, its row opens by itself and is clipped to a ten-line window: the text glides up two lines every 840ms, both edges of the window are masked so new lines arrive soft, and the window catches up by whole lines without ever passing the newest one; when the block settles the row folds back and the full text is one click away
 - a hand toggle always wins: a row you open or close yourself is never touched again
 - every tool call is one monospace line with a bullet, the localized tool name and the command or path; output hangs off a thin rail underneath
 - a finished turn's steps collapse into one line whose bullet becomes a chevron on hover, with an indented body when opened
@@ -80,13 +80,18 @@ dsh plugin --profile desktop add C:\path\to\claude-style-deepseek
 
 ## Settings
 
-**Settings -> Plugins -> Claude Style** has two switches:
+**Settings -> Plugins -> Claude Style** has three switches:
 
 - **Claude palette** retracts the token layer, leaving your current theme's colors.
 - **Claude transcript** drops the stylesheet and the thinking-window engine, leaving
   the shipped chat untouched.
+- **Thinking animation** drives the window and the breathing running mark. It is on by
+  default and deliberately does **not** follow the system's reduced-motion query: the
+  desktop app reports reduced motion on Windows with animation effects turned off, and
+  a theme whose whole point is this window would otherwise stand still. Switch it off
+  here for a still transcript.
 
-Both choices persist in the browser's `localStorage` for the profile you are using.
+All choices persist in the browser's `localStorage` for the profile you are using.
 
 ## Tuning
 
@@ -96,15 +101,16 @@ module:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `--cc-reason-window-cap` | `380px` | height ceiling of the live thinking window |
+| `--cc-reason-window-cap` | `240px` | height ceiling of the live thinking window (ten 24px lines) |
 | `--cc-reason-lines` | `2` | lines travelled per step |
 | `--cc-reason-hold` | `840ms` | rest between two steps |
-| `--cc-reason-fade` | `26px` | depth of the top and bottom fade |
+| `--cc-reason-fade` | `24px` | depth of the top and bottom fade |
 | `--cc-reason-duration` | `500ms` | glide of one step |
 | `--cc-reason-ease` | `cubic-bezier(.22,.61,.36,1)` | curve of one step |
 
-The reading measure is `--dsh-chat-user-width` (`min(820px, 100%)`). The whole
-animation is skipped under `prefers-reduced-motion: reduce`.
+The reading measure is `--dsh-chat-user-width` (`min(820px, 100%)`). Raise the ceiling
+and the window only appears on longer thoughts; lower it and it starts stepping
+sooner.
 
 ## How it works
 
@@ -113,12 +119,15 @@ animation is skipped under `prefers-reduced-motion: reduce`.
   and disappears cleanly when switched off.
 - The transcript skin targets documented Chat attributes (`data-chat-flow-kind`,
   `data-message-bubble`, `data-variant="think"`, `data-tool`, `data-step-process`,
-  `data-disclosure-row`, `data-markdown-variant`). The hashed class names beside them
-  change between builds and are not used.
+  `data-disclosure-row`). The hashed class names beside them change between builds and
+  are not used. The reasoning body is found through the Markdown variant attribute when
+  the host draws one, and through the first laid-out child of the disclosure body when
+  it does not (this host build draws none).
 - The thinking window is the only DOM write. It opens and folds the live thinking
   row through the host's own disclosure toggle, then sets and removes its own
   attributes plus the `height` and `transform` it owns on that row. It stops on
-  unload, on reduced motion, or when the transcript layer is switched off.
+  unload, when the animation switch is off, or when the transcript layer is switched
+  off.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
 

@@ -31,14 +31,22 @@ window.__ModuleLoader__.load({
     const CHANGE_EVENT = 'claude-style-deepseek:change';
     const STYLE_TAG = 'claude-style-deepseek/flow.css';
     const SOURCE = 'claude-style-deepseek';
-    const DEFAULT_PREFS = { colors: true, flow: true };
+
+    /* `motion` is separate from `flow` because it is the one choice a reader
+       makes against the operating system: the desktop app reports
+       prefers-reduced-motion: reduce on machines with Windows animation
+       effects off, and a skin whose whole point is the thinking window would
+       stand completely still there. The plugin's own switch is the explicit
+       answer for these rows; it defaults to moving. */
+    const DEFAULT_PREFS = { colors: true, flow: true, motion: true };
 
     const FLOW_ATTR = 'data-cc-flow';
     const COLORS_ATTR = 'data-cc-colors';
+    const MOTION_ATTR = 'data-cc-motion';
 
     /**
-     * The stylesheet. Every rule is scoped to `body[data-cc-flow]`, so
-     * removing the attribute restores the shipped transcript exactly.
+     * The stylesheet. Every transcript rule is scoped to `body[data-cc-flow]`,
+     * so removing the attribute restores the shipped transcript exactly.
      */
     const CSS =
       /* ---- palette hooks -------------------------------------------------
@@ -54,14 +62,18 @@ window.__ModuleLoader__.load({
         '--cc-think-bg:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,transparent);' +
         '--cc-prompt-bg:color-mix(in srgb,var(--dsw-alias-label-primary) 3.5%,transparent);' +
         '--cc-mono:var(--ds-font-family-code,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);' +
-        /* Knobs the thinking-window engine reads back through
-           getComputedStyle, so a reader can retune the window from a
-           stylesheet instead of the module: height ceiling, lines per step,
-           rest between steps, fade depth, and the glide of one step. */
-        '--cc-reason-window-cap:380px;' +
+        /* The thinking window, tuned the way the reference skin tunes it: a
+           ceiling on what a live thought may occupy, two lines per step, a
+           rest long enough to read a step before it moves, and the glide of
+           one step. The engine reads these back through getComputedStyle, so
+           a reader can retune the window from a stylesheet alone. The ceiling
+           is ten lines: the reference borrows the host's 400px process-body
+           cap, and this host draws no such cap, so the window takes the
+           Claude Code thinking-box height instead. */
+        '--cc-reason-window-cap:240px;' +
         '--cc-reason-lines:2;' +
         '--cc-reason-hold:840ms;' +
-        '--cc-reason-fade:26px;' +
+        '--cc-reason-fade:24px;' +
         '--cc-reason-duration:500ms;' +
         '--cc-reason-ease:cubic-bezier(.22,.61,.36,1);' +
         /* Claude Code keeps a narrow, stable reading measure. The Chat body
@@ -86,30 +98,31 @@ window.__ModuleLoader__.load({
          Selectors stay on the disclosure row that belongs to this block, so
          nested disclosures inside the reasoning body keep their own chrome. */
       'body[data-cc-flow] [data-variant=think]{position:relative;margin:2px 0;padding-left:11px;border-left:2px solid color-mix(in srgb,#d97757 36%,transparent);border-radius:0 8px 8px 0}' +
-      'body[data-cc-flow] [data-variant=think][data-expanded]{padding:5px 12px 8px 12px;background:var(--cc-think-bg);border-radius:0 10px 10px 0}' +
+      'body[data-cc-flow] [data-variant=think][data-expanded]{padding:6px 12px 8px 12px;background:var(--cc-think-bg);border-radius:0 10px 10px 0}' +
       'body[data-cc-flow] [data-variant=think]>div>[data-disclosure-header]>[data-disclosure-row]{color:var(--dsw-alias-label-tertiary)!important;font-style:italic}' +
       'body[data-cc-flow] [data-variant=think]>div>[data-disclosure-header]>[data-disclosure-row]::before{content:"";display:inline-block;flex:none;width:5px;height:5px;margin:0 8px 0 2px;border-radius:50%;background:color-mix(in srgb,#d97757 70%,transparent)}' +
       'body[data-cc-flow] [data-variant=think]>div>[data-disclosure-header]>[data-disclosure-row]>:first-child{width:0;min-width:0;margin:0;padding:0;overflow:hidden}' +
       'body[data-cc-flow] [data-variant=think]>div[data-open]>[data-disclosure-header]+div{padding-left:0!important;color:var(--dsw-alias-label-secondary);font-style:italic}' +
       'body[data-cc-flow] [data-variant=think][data-state=running]>div>[data-disclosure-header]>[data-disclosure-row]{color:var(--dsw-alias-label-secondary)!important}' +
-      /* The running dot breathes while the row is live, then rests. */
-      '@keyframes cc-think-pulse{0%,100%{opacity:.4;transform:scale(.82)}50%{opacity:1;transform:scale(1.14)}}' +
-      'body[data-cc-flow] [data-variant=think][data-state=running]>div>[data-disclosure-header]>[data-disclosure-row]::before{animation:cc-think-pulse 1.6s ease-in-out infinite}' +
-      '@media (prefers-reduced-motion:reduce){body[data-cc-flow] [data-variant=think][data-state=running]>div>[data-disclosure-header]>[data-disclosure-row]::before{animation:none}}' +
+      /* The running mark breathes for as long as the block is live. Gated on
+         the plugin's own switch, never on the OS query: that query is what
+         used to leave this skin still. */
+      '@keyframes cc-think-pulse{0%,100%{opacity:.35;transform:scale(.78)}50%{opacity:1;transform:scale(1.18)}}' +
+      'body[data-cc-flow][data-cc-motion=full] [data-variant=think][data-state=running]>div>[data-disclosure-header]>[data-disclosure-row]::before{animation:cc-think-pulse 1.6s ease-in-out infinite}' +
 
       /* ---- live thinking window ------------------------------------------
-         The module clips an open, still-streaming reasoning body to the
-         ceiling and steps its text upward two lines at a time; the rules here
-         only paint the clip, the fade and the glide of one step. Nothing is
-         touched once the row settles, so a finished block reads whole. */
-      'body[data-cc-flow] [data-cc-reason-window]{overflow:hidden;transition:height 180ms var(--cc-reason-ease)}' +
+         The engine clips an open, still-streaming reasoning body to the
+         ceiling, masks both edges once the text fills it, and glides the text
+         upward a whole number of lines every hold. The rules here only paint
+         what the engine marks; nothing is touched once the row settles, so a
+         finished block reads whole. */
+      'body[data-cc-flow] [data-cc-reason-window]{position:relative;overflow:hidden}' +
       'body[data-cc-flow] [data-cc-reason-window][data-cc-reason-capped]{-webkit-mask-image:linear-gradient(transparent 0,#000 var(--cc-reason-fade),#000 calc(100% - var(--cc-reason-fade)),transparent 100%);mask-image:linear-gradient(transparent 0,#000 var(--cc-reason-fade),#000 calc(100% - var(--cc-reason-fade)),transparent 100%)}' +
       'body[data-cc-flow] [data-cc-reason-window] [data-cc-reason-text]{transform:translateY(0);transition:transform var(--cc-reason-duration) var(--cc-reason-ease);will-change:transform}' +
-      '@media (prefers-reduced-motion:reduce){' +
-        'body[data-cc-flow] [data-cc-reason-window]{transition:none}' +
-        'body[data-cc-flow] [data-cc-reason-window][data-cc-reason-capped]{-webkit-mask-image:none;mask-image:none}' +
-        'body[data-cc-flow] [data-cc-reason-window] [data-cc-reason-text]{transition:none}' +
-      '}' +
+      /* The newest line lands soft rather than hard: the window fades the text
+         it is still receiving while the step glides over it. */
+      'body[data-cc-flow] [data-cc-reason-window][data-cc-reason-capped] [data-cc-reason-text]{animation:cc-reason-settle .4s ease-out both}' +
+      '@keyframes cc-reason-settle{from{opacity:.55}to{opacity:1}}' +
 
       /* ---- tool calls ----------------------------------------------------
          One line per call: a bullet, the localized tool title, then the
@@ -298,7 +311,10 @@ window.__ModuleLoader__.load({
       'settings.colors.description': 'Warm charcoal in dark, warm paper in light, with the Claude accent on links, primary actions and the running status.',
       'settings.flow.title': 'Claude transcript',
       'settings.flow.description': 'Prompt blocks, a thinking window that steps live reasoning two lines at a time, one-line tool rows and indented step summaries.',
-      'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone.',
+      'settings.motion.title': 'Thinking animation',
+      'settings.motion.description': 'Steps the live thinking window two lines at a time and breathes the running mark. Runs even when the system asks for reduced motion; switch it off here for a still transcript.',
+      'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 400px ceiling.',
+      'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
       'settings.off': 'Off',
       'label.title': 'Claude Style',
@@ -313,13 +329,16 @@ window.__ModuleLoader__.load({
       'settings.colors.description': '深色下是暖炭黑，浅色下是暖纸色，链接、主要按钮与运行状态使用 Claude 的橙色。',
       'settings.flow.title': 'Claude 会话排版',
       'settings.flow.description': '提示块、正在流式输出时按两行步进的思考窗口、单行工具行与缩进的步骤摘要。',
-      'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。',
+      'settings.motion.title': '思考动画',
+      'settings.motion.description': '让正在输出的思考窗口按两行步进，并让运行中的标记呼吸。即使系统要求减少动态效果也照常运行；想完全静止就在这里关掉。',
+      'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
+      'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
       'settings.off': '关',
       'label.title': 'Claude 风格',
     };
 
-    /** Read the two switches; anything unreadable falls back to "on". */
+    /** Read the switches; anything unreadable falls back to "on". */
     function readPrefs() {
       try {
         const raw = window.localStorage.getItem(PREF_KEY);
@@ -329,18 +348,26 @@ window.__ModuleLoader__.load({
             return {
               colors: parsed.colors !== false,
               flow: parsed.flow !== false,
+              motion: parsed.motion !== false,
             };
           }
         }
       } catch (error) {
         /* private mode, blocked origin, or a hand-edited value */
       }
-      return { colors: DEFAULT_PREFS.colors, flow: DEFAULT_PREFS.flow };
+      return { colors: DEFAULT_PREFS.colors, flow: DEFAULT_PREFS.flow, motion: DEFAULT_PREFS.motion };
     }
 
     function writePrefs(prefs) {
       try {
-        window.localStorage.setItem(PREF_KEY, JSON.stringify({ colors: prefs.colors === true, flow: prefs.flow === true }));
+        window.localStorage.setItem(
+          PREF_KEY,
+          JSON.stringify({
+            colors: prefs.colors === true,
+            flow: prefs.flow === true,
+            motion: prefs.motion === true,
+          }),
+        );
       } catch (error) {
         /* quota or blocked storage: the choice simply does not persist */
       }
@@ -357,18 +384,23 @@ window.__ModuleLoader__.load({
     /* ------------------------------------------------------------------ *
      * The live thinking window.
      *
-     * An open reasoning row that is still streaming is clipped to a ceiling
-     * and its text stepped upward two lines at a time, the way a terminal
-     * window follows a live log: the newest lines stay in view without the
-     * block outgrowing the transcript. The ceiling, the lines per step and
-     * the rest between steps are read from the CSS custom properties above,
-     * so they can be retuned without touching this module.
+     * The reasoning spec this port follows, in full: while a thinking row is
+     * live and open, the body it renders into is a window at most
+     * `--cc-reason-window-cap` tall; once the text fills that window the text
+     * is stepped upward by whole lines (`--cc-reason-lines` of them) every
+     * `--cc-reason-hold`, gliding over `--cc-reason-duration` on
+     * `--cc-reason-ease`, and the window masks `--cc-reason-fade` at both
+     * edges so new lines arrive soft. A step never passes the newest line: it
+     * catches up by however many whole lines the text has grown, then waits.
      *
-     * This is the only place the plugin touches the host's DOM, and it only
-     * writes on `[data-variant=think][data-state=running][data-expanded]`
-     * rows: attributes it removes again on settle, collapse, or unload, plus
-     * the `height` and `transform` it owns on two host elements. It never
-     * re-parents a node, never inserts one, and stops on reduced motion.
+     * The host starts every thinking row collapsed, so the engine also keeps
+     * the row open while it is live and folds it back when it settles
+     * (expanded <=> running). A row the reader opens or closes by hand is
+     * recorded in `touched` and never pressed again for that phase.
+     *
+     * This is the only place the plugin touches the host's DOM: it writes two
+     * attributes and the `height` / `transform` it owns, and removes them on
+     * settle, collapse, unload, or when the animation switch is off.
      * ------------------------------------------------------------------ */
     const THINK_ROW = '[data-variant="think"]';
     const REASON_WINDOW_ATTR = 'data-cc-reason-window';
@@ -384,22 +416,28 @@ window.__ModuleLoader__.load({
       let observer = null;
       let frame = 0;
       let stopped = true;
-      const reduced =
-        typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
-      /** Read a positive numeric CSS custom property from the body. */
-      const knob = (name, fallback) => {
-        let raw = '';
+      /** Read the tuning knobs from the body, with the shipped defaults. */
+      const knobs = () => {
+        let style = null;
         try {
-          raw = getComputedStyle(document.body).getPropertyValue(name);
+          style = getComputedStyle(document.body);
         } catch (error) {
-          return fallback;
+          style = null;
         }
-        const value = Number.parseFloat(raw);
-        return Number.isFinite(value) && value > 0 ? value : fallback;
+        const read = (name, fallback) => {
+          const raw = style === null ? '' : style.getPropertyValue(name);
+          const value = Number.parseFloat(raw);
+          return Number.isFinite(value) && value > 0 ? value : fallback;
+        };
+        return {
+          cap: read('--cc-reason-window-cap', 240),
+          lines: Math.max(1, read('--cc-reason-lines', 2)),
+          hold: read('--cc-reason-hold', 840),
+        };
       };
 
-      const clear = (row) => {
+      const unfold = (row) => {
         const state = states.get(row);
         if (state === undefined) return;
         states.delete(row);
@@ -413,7 +451,7 @@ window.__ModuleLoader__.load({
       };
 
       const clearAll = () => {
-        for (const row of [...states.keys()]) clear(row);
+        for (const row of [...states.keys()]) unfold(row);
       };
 
       /** The disclosure body of an open reasoning row. */
@@ -426,33 +464,37 @@ window.__ModuleLoader__.load({
         return box === null || box === undefined ? null : box;
       };
 
-      /** The reasoning text element inside a body (Markdown compact root). */
+      /** The reasoning text element inside a body (Markdown root, or the
+          first laid-out child when this host draws the body without one). */
       const textOf = (box) => {
         const markdown = box.querySelector('[data-markdown-variant]');
         if (markdown !== null) return markdown;
-        /* A replaced reasoning body may carry no Markdown marker: take the
-           first descendant that actually renders a box. */
-        const queue = [box];
-        while (queue.length > 0) {
-          const node = queue.shift();
+        let node = box;
+        while (node !== null) {
+          let next = null;
           for (const child of node.children) {
-            if (getComputedStyle(child).display !== 'contents') return child;
-            queue.push(child);
+            if (getComputedStyle(child).display !== 'contents') {
+              next = child;
+              break;
+            }
           }
+          if (next === null) return null;
+          if (next.children.length === 0 || next.querySelector('[data-markdown-variant]') !== null) return next;
+          node = next;
         }
         return null;
       };
 
-      const measure = (state) => {
+      /** Window height and reachable travel for the text as it stands now. */
+      const measure = (state, tuning) => {
         const lineHeight = Number.parseFloat(getComputedStyle(state.text).lineHeight);
-        const line = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 22;
-        const cap = knob('--cc-reason-window-cap', 380);
-        const lines = Math.max(1, knob('--cc-reason-lines', 2));
-        const height = state.text.offsetHeight;
-        state.step = Math.max(1, Math.round(line * lines));
-        state.height = Math.min(height, cap);
-        state.reachable = Math.max(0, Math.round(height - state.height));
-        state.capped = height > cap && state.reachable > 0;
+        const line = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 24;
+        const full = state.text.offsetHeight;
+        const height = Math.min(full, tuning.cap);
+        state.step = Math.max(1, Math.round(line * tuning.lines));
+        if (state.height !== height) state.height = height;
+        state.reachable = Math.max(0, Math.round(full - height));
+        state.capped = full > height;
       };
 
       const paint = (state) => {
@@ -473,40 +515,41 @@ window.__ModuleLoader__.load({
         else state.text.style.removeProperty('transform');
       };
 
+      const live = (row, state) =>
+        !stopped &&
+        states.has(row) &&
+        row.isConnected &&
+        state.box.isConnected &&
+        state.text.isConnected &&
+        row.hasAttribute('data-expanded') &&
+        row.getAttribute('data-state') === 'running';
+
       const stepLater = (row, state) => {
+        const tuning = knobs();
         state.timer = window.setTimeout(
           () => {
             state.timer = 0;
-            if (stopped || !states.has(row)) return;
-            if (
-              !row.isConnected ||
-              !row.hasAttribute('data-expanded') ||
-              row.getAttribute('data-state') !== 'running'
-            ) {
-              clear(row);
+            if (!live(row, state)) {
+              if (states.has(row)) unfold(row);
               return;
             }
-            if (reduced !== null && reduced.matches) {
-              clear(row);
-              return;
-            }
-            measure(state);
-            const next = Math.min(state.offset + state.step, state.reachable);
-            if (next !== state.offset) state.offset = next;
+            measure(state, tuning);
+            const step = Math.max(1, Math.round((state.reachable - state.offset) / state.step));
+            state.offset = Math.min(state.offset + step * state.step, state.reachable);
             paint(state);
             if (state.capped && state.offset < state.reachable) stepLater(row, state);
           },
-          knob('--cc-reason-hold', 840),
+          tuning.hold,
         );
       };
 
       const run = (row) => {
+        const tuning = knobs();
         let state = states.get(row);
         if (state !== undefined) {
-          const attached =
-            state.box.isConnected && state.text.isConnected && state.box.contains(state.text);
+          const attached = state.box.isConnected && state.text.isConnected && state.box.contains(state.text);
           if (!attached) {
-            clear(row);
+            unfold(row);
             state = undefined;
           }
         }
@@ -515,19 +558,10 @@ window.__ModuleLoader__.load({
           if (box === null) return;
           const text = textOf(box);
           if (text === null) return;
-          state = {
-            box,
-            text,
-            timer: 0,
-            offset: 0,
-            step: 0,
-            height: 0,
-            reachable: 0,
-            capped: false,
-          };
+          state = { box, text, timer: 0, offset: 0, step: 0, height: -1, reachable: 0, capped: false };
           states.set(row, state);
         }
-        measure(state);
+        measure(state, tuning);
         paint(state);
         if (state.capped && state.offset < state.reachable && state.timer === 0) stepLater(row, state);
       };
@@ -540,15 +574,14 @@ window.__ModuleLoader__.load({
           clearAll();
           return;
         }
+        const motion = document.body.getAttribute(MOTION_ATTR) === 'full';
         /* Scan the transcript, not the whole document: the flow slot is the
            only place a reasoning row can appear. */
         const scope = document.querySelector('[data-slot="conversation.chat.flow"]') ?? document.body;
         const rows = scope.querySelectorAll(THINK_ROW);
 
         /* Keep a live thinking row open while it streams, then fold it back
-           once it settles: expanded ⇔ running, the same rule the reason
-           window builds on. Rows the reader opened or closed by hand are
-           never touched again (see `touched`). */
+           once it settles. Rows the reader touched are never pressed. */
         for (const row of rows) {
           if (!row.isConnected) {
             managed.delete(row);
@@ -562,38 +595,32 @@ window.__ModuleLoader__.load({
             continue;
           }
           if (!running && expanded && isManaged) {
-            if (touched.has(row)) {
-              managed.delete(row);
-              continue;
-            }
-            clickRow(row);
+            if (!touched.has(row)) clickRow(row);
             managed.delete(row);
             continue;
           }
-          if (!running && isManaged && !expanded) managed.delete(row);
-          if (running && isManaged && !expanded && touched.has(row)) managed.delete(row);
+          if (!running && isManaged) managed.delete(row);
         }
 
-        if (reduced !== null && reduced.matches) {
+        if (!motion) {
           clearAll();
           return;
         }
 
-        const live = new Set();
+        const open = new Set();
         for (const row of rows) {
-          if (row.getAttribute('data-state') === 'running' && row.hasAttribute('data-expanded')) live.add(row);
+          if (row.getAttribute('data-state') === 'running' && row.hasAttribute('data-expanded')) open.add(row);
         }
         for (const row of [...states.keys()]) {
-          if (!live.has(row) || !row.isConnected) clear(row);
+          if (!open.has(row) || !row.isConnected) unfold(row);
         }
-        for (const row of live) run(row);
+        for (const row of open) run(row);
       };
 
       /** Click the disclosure row so the host's own toggle runs. */
       const clickRow = (row) => {
         if (!row.isConnected) return false;
-        const control =
-          row.querySelector(DISCLOSURE_CONTROL) ?? row.querySelector('[data-disclosure-row]');
+        const control = row.querySelector(DISCLOSURE_CONTROL) ?? row.querySelector('[data-disclosure-row]');
         if (control === null || typeof control.click !== 'function') return false;
         autoClicking = true;
         try {
@@ -638,7 +665,7 @@ window.__ModuleLoader__.load({
             subtree: true,
             characterData: true,
             attributes: true,
-            attributeFilter: ['data-state', 'data-expanded'],
+            attributeFilter: ['data-state', 'data-expanded', 'data-cc-motion'],
           });
           document.addEventListener('click', markTouched, true);
           document.addEventListener('keydown', markTouched, true);
@@ -693,7 +720,7 @@ window.__ModuleLoader__.load({
       const t = typeof props.t === 'function' ? props.t : (key) => key;
       const [prefs, setPrefs] = React.useState(readPrefs);
       const update = (key, value) => {
-        const next = { colors: prefs.colors, flow: prefs.flow, [key]: value };
+        const next = { colors: prefs.colors, flow: prefs.flow, motion: prefs.motion, [key]: value };
         setPrefs(next);
         writePrefs(next);
         announce();
@@ -718,8 +745,15 @@ window.__ModuleLoader__.load({
             label: t('settings.flow.title'),
             onChange: (value) => update('flow', value),
           }),
+          h(SwitchRow, {
+            checked: prefs.motion,
+            description: t('settings.motion.description'),
+            label: t('settings.motion.title'),
+            onChange: (value) => update('motion', value),
+          }),
         ),
         h('p', { className: 'cc-set-hint' }, t('settings.hint')),
+        h('p', { className: 'cc-set-hint' }, t('settings.motionHint')),
       );
     }
 
@@ -774,6 +808,7 @@ window.__ModuleLoader__.load({
           if (body === null) return;
           body.toggleAttribute(FLOW_ATTR, prefs.flow);
           body.toggleAttribute(COLORS_ATTR, prefs.colors);
+          body.setAttribute(MOTION_ATTR, prefs.motion && prefs.flow ? 'full' : 'off');
 
           if (prefs.flow) reasonWindow.start();
           else reasonWindow.stop();
@@ -810,6 +845,7 @@ window.__ModuleLoader__.load({
           if (typeof document !== 'undefined' && document.body !== null) {
             document.body.removeAttribute(FLOW_ATTR);
             document.body.removeAttribute(COLORS_ATTR);
+            document.body.removeAttribute(MOTION_ATTR);
           }
         };
       }, 'claude-flow: preferences');

@@ -1,6 +1,6 @@
 {
   "name": "claude-style-deepseek",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Claude Code colors and transcript flow for DeepSeek Harness: warm palette, live thinking window, one-line tool calls and collapsible step summaries.",
   "type": "module",
   "license": "MIT",
