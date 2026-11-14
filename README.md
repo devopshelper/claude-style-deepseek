@@ -50,50 +50,73 @@ Work details`). This plugin only restyles the summary line and its body.
 
 ## Install
 
-One line, no script, no download. Paste it into a terminal and refresh the app
-(`Ctrl+R`):
+### Windows: run the installer
+
+Download [install.bat](install.bat) and double-click it, or from a terminal:
+
+```bat
+install.bat
+```
+
+Or without downloading anything by hand:
+
+```bat
+curl -fsSL -o install.bat https://raw.githubusercontent.com/devopshelper/claude-style-deepseek/main/install.bat && install.bat
+```
+
+It does the whole job:
+
+- finds `dsh` on PATH, in the desktop app's own `resources\runtime\cli\bin`, in the
+  Add/Remove Programs entry, or installs the CLI from npm when neither exists
+- adds that folder to your user PATH when the entry is missing (the registry value
+  kind is preserved, and the current process gets it immediately)
+- picks the profile for you: `desktop` when the app has been opened once, `web`
+  otherwise
+- installs the plugin and, this is the part a bare `dsh plugin add` does not do,
+  **selects the bundle** in `dsh.profile.bundles`, so the app actually mounts it
+- verifies the dependency, the client file and the selection, then prints the version
+
+Options:
+
+```bat
+install.bat -Profile web      :: force a profile
+install.bat -Uninstall        :: remove the plugin and deselect the bundle
+install.bat -NoPathRepair     :: leave PATH alone
+```
+
+No execution-policy change is needed: the `.bat` starts the `.ps1` with
+`-ExecutionPolicy Bypass` for that one process only. Running `install.ps1` directly on
+a locked-down machine needs the same flag:
 
 ```powershell
-# Windows desktop app
-dsh plugin --profile desktop add github:devopshelper/claude-style-deepseek
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
+
+Exit codes: `0` installed, `1` failed, `2` open DeepSeek Harness once so it creates the
+profile, then run it again.
+
+### Manual install
 
 ```bash
 # browser / dsh web profile
 dsh plugin --profile web add github:devopshelper/claude-style-deepseek
 ```
 
-`dsh` is put on your PATH by the DeepSeek Harness installer. The only variable is
-the profile name: the desktop app keeps its own `desktop` profile, a browser session
-uses `web`. If the theme does not appear after the refresh, restart DeepSeek Harness
-once.
+```powershell
+# Windows desktop app
+dsh plugin --profile desktop add github:devopshelper/claude-style-deepseek
+```
 
-### No `dsh` on PATH?
+Then select the bundle, because the dependency alone is inert: **Settings -> Plugins ->
+Claude Style** must show as enabled. The installer does this for you.
 
-The desktop installer normally puts it there, but a skipped option, a moved install or
-a fresh shell can leave it out. Call the app's own launcher instead:
+No `dsh` on PATH? Call the app's own launcher, which is the same CLI:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:devopshelper/claude-style-deepseek
 ```
 
-Installed for all users, or somewhere else? Find the launcher first, then run it:
-
-```powershell
-$c = @("$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd","$env:ProgramFiles\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd") | Where-Object { Test-Path $_ } | Select-Object -First 1; $c; & $c plugin --profile desktop add github:devopshelper/claude-style-deepseek
-```
-
-To keep the command for good, add its folder to your user PATH once (open a new
-terminal afterwards):
-
-```powershell
-[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path','User') + ';' + (Split-Path $c), 'User')
-```
-
-### No desktop app at all
-
-The CLI is the same code the app bundles, published on npm. Install it, then add the
-plugin to the browser profile:
+Or install the CLI from npm on a machine without the app:
 
 ```powershell
 npm install -g @deepseek-ai/dsh
