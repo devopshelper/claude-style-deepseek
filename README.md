@@ -96,6 +96,7 @@ Options:
 install.bat -Profile web      :: force a profile
 install.bat -Uninstall        :: remove the plugin and deselect the bundle
 install.bat -NoPathRepair     :: leave PATH alone
+install.bat -CompactThreshold 0.75  :: compact the context earlier
 ```
 
 No execution-policy change is needed: the `.bat` starts the `.ps1` with
@@ -181,6 +182,38 @@ The second group holds the sidebar:
   star nested inside a folder outline.
 
 All choices persist in the browser's `localStorage` for the profile you are using.
+
+## Auto-compact
+
+The harness already ships automatic compaction (`dsh-compaction-basic`, `auto: true`),
+so there is no engine to add, only a threshold to expose. The installer can lower it
+for a profile:
+
+```bat
+install.bat -CompactThreshold 0.75
+```
+
+It writes a marked loader patch block into
+`%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml`:
+
+```yaml
+# >>> claude-style-deepseek auto-compact
+- id: compaction-basic
+  name: "@deepseek-ai/dsh-compaction-basic"
+  config:
+    thresholdRatio: 0.75
+# <<< claude-style-deepseek auto-compact
+```
+
+Re-running with another value replaces the block, and `install.bat -Uninstall`
+removes it. The change lands on the next app start, because the loader reads the
+profile patch at boot.
+
+The engine's other knobs live in the same entry: `headroomTokens` (65536),
+`retainRatio`, `retainTokens`, `compactionRetries`, `maxOverflowRetries`,
+`modelPolicies`, and `auto`. Set `auto: false` for manual-only operation and type
+`/compact` in a chat to condense once. A lower threshold compacts sooner and keeps
+the context window smaller, at the cost of summarizing away detail earlier.
 
 ## Tuning
 

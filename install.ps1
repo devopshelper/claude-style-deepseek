@@ -25,7 +25,13 @@ param(
     [switch] $Uninstall,
 
     # Do not touch the user PATH.
-    [switch] $NoPathRepair
+    [switch] $NoPathRepair,
+
+    # Lower the host's auto-compaction threshold in this profile (0.5 - 0.95).
+    # 0 keeps the shipped policy. The host already compacts automatically; this
+    # only makes it happen earlier.
+    [ValidateRange(0, 0.95)]
+    [double] $CompactThreshold = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -243,6 +249,55 @@ function Select-Bundle {
     return $true
 }
 
+<#
+    The host already compacts automatically. This writes a loader patch entry
+    that lowers its threshold for this profile, inside a marked block, so a
+    later run replaces the block instead of stacking duplicates, and removing
+    it hands the profile back to the shipped policy.
+#>
+function Set-CompactThreshold {
+    param(
+        [string] $ProfileDir,
+        [double] $Threshold = 0,
+        [switch] $Remove
+    )
+
+    $path = Join-Path $ProfileDir 'cordis.patch.yml'
+    $start = '# >>> claude-style-deepseek auto-compact'
+    $end = '# <<< claude-style-deepseek auto-compact'
+    $existing = if (Test-Path -LiteralPath $path) { Get-Content -LiteralPath $path -Raw } else { '' }
+    $has = $existing.Contains($start)
+
+    if ($Remove) {
+        if (-not $has) { return $false }
+        Copy-Item -LiteralPath $path -Destination ($path + '.bak-compact') -Force
+        $text = [regex]::Replace($existing, '(?s)\r?\n*' + [regex]::Escape($start) + '.*?' + [regex]::Escape($end), '')
+        Set-Content -LiteralPath $path -Value ($text.TrimEnd() + "`r`n") -NoNewline
+        return $true
+    }
+
+    $value = $Threshold.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    $block = @(
+        $start,
+        '- id: compaction-basic',
+        '  name: "@deepseek-ai/dsh-compaction-basic"',
+        '  config:',
+        ('    thresholdRatio: ' + $value),
+        $end
+    ) -join "`r`n"
+
+    if ($has) {
+        $text = [regex]::Replace($existing, '(?s)' + [regex]::Escape($start) + '.*?' + [regex]::Escape($end), $block)
+    } else {
+        $text = if ($existing.Trim() -eq '') { '' } else { $existing.TrimEnd() + "`r`n`r`n" }
+        $text += $block
+    }
+
+    if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination ($path + '.bak-compact') -Force }
+    Set-Content -LiteralPath $path -Value ($text.TrimEnd() + "`r`n") -NoNewline
+    return $true
+}
+
 # ------------------------------------------------------------------ start ---
 
 if ($Profile -eq 'auto') {
@@ -311,6 +366,7 @@ if ($Uninstall) {
     & $dsh plugin --profile $Profile remove $PackageName 2>&1 | ForEach-Object { Write-Note ([string] $_).TrimEnd() }
     $code = $LASTEXITCODE
     [void] (Select-Bundle -PackageJson $packageJson -Name $PackageName -Remove)
+    [void] (Set-CompactThreshold -ProfileDir $profileDir -Remove)
 
     if ($code -ne 0) {
         Write-Bad "pnpm exited with $code."
@@ -400,6 +456,21 @@ if (Test-Path -LiteralPath $installedManifest) {
 }
 
 Write-Ok "Version $version, dependency $declared, bundle selected"
+
+# ------------------------------------------------------------- auto-compact ---
+# The host ships automatic compaction already; this only moves its threshold.
+
+if ($CompactThreshold -gt 0) {
+    if ($CompactThreshold -lt 0.5) {
+        Write-Bad 'A threshold below 0.5 would compact almost every step; use 0.5 - 0.95.'
+        exit 1
+    }
+    Write-Step 'Setting the auto-compact threshold'
+    [void] (Set-CompactThreshold -ProfileDir $profileDir -Threshold $CompactThreshold)
+    Write-Ok ('thresholdRatio ' + $CompactThreshold + ' written to ' + (Join-Path $profileDir 'cordis.patch.yml'))
+    Write-Note 'Restart DeepSeek Harness: the loader reads the profile patch at boot.'
+}
+
 Write-Host ''
 Write-Host '  Done.' -ForegroundColor Green
 Write-Host '  Refresh DeepSeek Harness with Ctrl+R. If the theme does not appear,' -ForegroundColor Gray
