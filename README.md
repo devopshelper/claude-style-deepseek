@@ -50,27 +50,21 @@ Work details`). This plugin only restyles the summary line and its body.
 
 ## Install
 
-### Windows: run the installer
+### Windows
 
-Download [install.bat](install.bat) and double-click it, or from a terminal:
-
-```bat
-install.bat
-```
-
-Or without downloading anything by hand. No clone, no git, no saved script. One line,
-paste it into PowerShell (it also works from `cmd` and the Run dialog):
+One line, no clone, no saved script. Paste it into PowerShell (it also works from
+`cmd` and the Run dialog):
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/devopshelper/claude-style-deepseek/main/install.ps1 | iex"
 ```
 
 The outer `powershell` matters: the installer ends with `exit`, and running it in a
-child process means that exit code is reported instead of closing your window. What
-gets executed is [install.ps1](install.ps1) from `main`, which you can read first.
+child process reports that exit code instead of closing your window. What runs is
+[install.ps1](install.ps1) from `main`, which you can read first.
 
-Prefer a file you can re-run? Fetch the runner in `cmd` (Windows 10 1803 and later
-carry `curl`):
+Prefer a file you can re-run? Download [install.bat](install.bat) and double-click it,
+or fetch it in `cmd` (Windows 10 1803 and later carry `curl`):
 
 ```bat
 curl -fsSL -o install.bat https://raw.githubusercontent.com/devopshelper/claude-style-deepseek/main/install.bat && install.bat
