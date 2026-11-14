@@ -58,7 +58,15 @@ Download [install.bat](install.bat) and double-click it, or from a terminal:
 install.bat
 ```
 
-Or without downloading anything by hand:
+Or without downloading anything by hand. No clone, no git, no saved script: paste one
+line into PowerShell. It writes the installer to `%TEMP%` and runs it in its own
+process, so the script's exit does not close your window:
+
+```powershell
+$u='https://raw.githubusercontent.com/devopshelper/claude-style-deepseek/main/install.ps1'; $f=Join-Path $env:TEMP 'claude-style-install.ps1'; Invoke-WebRequest -UseBasicParsing $u -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+```
+
+Or fetch the re-runnable runner in `cmd` (Windows 10 1803 and later carry `curl`):
 
 ```bat
 curl -fsSL -o install.bat https://raw.githubusercontent.com/devopshelper/claude-style-deepseek/main/install.bat && install.bat
