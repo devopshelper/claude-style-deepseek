@@ -72,8 +72,9 @@ It does the whole job:
   kind is preserved, and the current process gets it immediately)
 - picks the profile for you: `desktop` when the app has been opened once, `web`
   otherwise
-- installs the plugin and, this is the part a bare `dsh plugin add` does not do,
-  **selects the bundle** in `dsh.profile.bundles`, so the app actually mounts it
+- installs the plugin and makes sure the profile **selects the bundle** in
+  `dsh.profile.bundles`: a plain add selects a brand-new dependency, but an update of
+  one that is already present can leave it installed and mounted nowhere
 - verifies the dependency, the client file and the selection, then prints the version
 
 Options:

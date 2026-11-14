@@ -297,6 +297,17 @@ Write-Info $profileDir
 
 if ($Uninstall) {
     Write-Step 'Removing the plugin'
+    $doc = Read-ProfileDocument $packageJson
+    $declared = $null
+    if ($doc -and $doc.dependencies) { $declared = $doc.dependencies.$PackageName }
+    if (-not $declared) {
+        [void] (Select-Bundle -PackageJson $packageJson -Name $PackageName -Remove)
+        Write-Note "$PackageName is not installed in this profile."
+        Write-Ok 'Nothing to remove.'
+        Write-Host ''
+        exit 0
+    }
+
     & $dsh plugin --profile $Profile remove $PackageName 2>&1 | ForEach-Object { Write-Note ([string] $_).TrimEnd() }
     $code = $LASTEXITCODE
     [void] (Select-Bundle -PackageJson $packageJson -Name $PackageName -Remove)
@@ -305,7 +316,8 @@ if ($Uninstall) {
         Write-Bad "pnpm exited with $code."
         exit 1
     }
-    Write-Ok 'Removed. Restart DeepSeek Harness to get the shipped look back.'
+    Write-Ok 'Removed, and the bundle is no longer selected.'
+    Write-Note 'Restart DeepSeek Harness to get the shipped look back.'
     Write-Host ''
     exit 0
 }
