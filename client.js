@@ -37,12 +37,18 @@ window.__ModuleLoader__.load({
        prefers-reduced-motion: reduce on machines with Windows animation
        effects off, and a skin whose whole point is the thinking window would
        stand completely still there. The plugin's own switch is the explicit
-       answer for these rows; it defaults to moving. */
-    const DEFAULT_PREFS = { colors: true, flow: true, motion: true };
+       answer for these rows; it defaults to moving.
+
+       `typeface` is optional for the same reason the palette is: the harness
+       fixes its font in CSS with no setting to change it, so the only polite
+       way to offer one is to leave the shipped font alone until a reader asks
+       for another. */
+    const DEFAULT_PREFS = { colors: true, flow: true, motion: true, typeface: 'default' };
 
     const FLOW_ATTR = 'data-cc-flow';
     const COLORS_ATTR = 'data-cc-colors';
     const MOTION_ATTR = 'data-cc-motion';
+    const TYPEFACE_ATTR = 'data-cc-typeface';
 
     /**
      * The stylesheet. Every transcript rule is scoped to `body[data-cc-flow]`,
@@ -62,6 +68,11 @@ window.__ModuleLoader__.load({
         '--cc-think-bg:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,transparent);' +
         '--cc-prompt-bg:color-mix(in srgb,var(--dsw-alias-label-primary) 3.5%,transparent);' +
         '--cc-mono:var(--ds-font-family-code,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);' +
+        /* The reading face: system serifs that reach the same shelf as the
+           editorial look, with no font file to download and nothing to
+           license. --cc-mono stays the terminal face, and it is the harness's
+           own code font when that is available. */
+        '--cc-prose:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;' +
         /* The thinking window, tuned the way the reference skin tunes it: a
            ceiling on what a live thought may occupy, two lines per step, a
            rest long enough to read a step before it moves, and the glide of
@@ -81,6 +92,15 @@ window.__ModuleLoader__.load({
            every Markdown table follow it. */
         '--dsh-chat-user-width:min(820px,100%);' +
         '--dsh-chat-flow-gap:6px}' +
+
+      /* ---- conversation font ---------------------------------------------
+         Off by default: the shipped font stands until the reader picks one.
+         The family goes on the chat column, so the whole transcript follows
+         while the composer follows only in the terminal face, where a mono
+         input matches the mono transcript. Code keeps its own monospace in
+         both modes; the host sets that family on code elements directly. */
+      'body[data-cc-flow][data-cc-typeface=serif] [data-chat-flow]{font-family:var(--cc-prose)}' +
+      'body[data-cc-flow][data-cc-typeface=mono] :is([data-chat-flow],[data-composer-seat]){font-family:var(--cc-mono)}' +
 
       /* ---- user prompt ---------------------------------------------------
          A prompt block, not a chat bubble: full measure, transparent, one
@@ -178,9 +198,14 @@ window.__ModuleLoader__.load({
       '.cc-set-switch[aria-checked=true]{background:var(--cc-accent-strong,#c96442);border-color:transparent}' +
       '.cc-set-switch[aria-checked=true]::after{transform:translateX(14px);background:#fff}' +
       '.cc-set-switch:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}' +
+      '.cc-set-choice{display:flex;flex:none;gap:4px;margin-top:1px}' +
+      '.cc-set-option{padding:3px 9px;border:.5px solid var(--dsw-alias-border-l3);border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;line-height:1.5;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}' +
+      '.cc-set-option:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
+      '.cc-set-option[aria-checked=true]{background:var(--cc-accent-strong,#c96442);border-color:transparent;color:#fff}' +
+      '.cc-set-option:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}' +
       '.cc-set-hint{margin:0;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:11px}' +
       '.cc-set-hint code{font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:11px;padding:0 3px;border-radius:3px;background:var(--dsw-alias-markdown-inline-code)}' +
-      '@media (prefers-reduced-motion:reduce){.cc-set-switch,.cc-set-switch::after{transition:none}}';
+      '@media (prefers-reduced-motion:reduce){.cc-set-switch,.cc-set-switch::after,.cc-set-option{transition:none}}';
 
     /**
      * Alias-token layer. Warm charcoal in dark, warm paper in light; the
@@ -313,6 +338,11 @@ window.__ModuleLoader__.load({
       'settings.flow.description': 'Prompt blocks, a thinking window that steps live reasoning two lines at a time, one-line tool rows and indented step summaries.',
       'settings.motion.title': 'Thinking animation',
       'settings.motion.description': 'Steps the live thinking window two lines at a time and breathes the running mark. Runs even when the system asks for reduced motion; switch it off here for a still transcript.',
+      'settings.typeface.title': 'Conversation font',
+      'settings.typeface.description': 'Leave the harness font alone, or set the transcript in a reading serif or a terminal monospace. Code keeps its own monospace either way.',
+      'settings.typeface.default': 'Default',
+      'settings.typeface.serif': 'Serif',
+      'settings.typeface.mono': 'Mono',
       'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 400px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
@@ -331,6 +361,11 @@ window.__ModuleLoader__.load({
       'settings.flow.description': '提示块、正在流式输出时按两行步进的思考窗口、单行工具行与缩进的步骤摘要。',
       'settings.motion.title': '思考动画',
       'settings.motion.description': '让正在输出的思考窗口按两行步进，并让运行中的标记呼吸。即使系统要求减少动态效果也照常运行；想完全静止就在这里关掉。',
+      'settings.typeface.title': '会话字体',
+      'settings.typeface.description': '保持 Harness 自带的字体，或把对话换成阅读用的衬线体、终端用的等宽体。两种模式下代码块都保持等宽。',
+      'settings.typeface.default': '默认',
+      'settings.typeface.serif': '衬线',
+      'settings.typeface.mono': '等宽',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
@@ -345,27 +380,36 @@ window.__ModuleLoader__.load({
         if (typeof raw === 'string') {
           const parsed = JSON.parse(raw);
           if (parsed !== null && typeof parsed === 'object') {
+            const typeface = parsed.typeface === 'serif' || parsed.typeface === 'mono' ? parsed.typeface : 'default';
             return {
               colors: parsed.colors !== false,
               flow: parsed.flow !== false,
               motion: parsed.motion !== false,
+              typeface,
             };
           }
         }
       } catch (error) {
         /* private mode, blocked origin, or a hand-edited value */
       }
-      return { colors: DEFAULT_PREFS.colors, flow: DEFAULT_PREFS.flow, motion: DEFAULT_PREFS.motion };
+      return {
+        colors: DEFAULT_PREFS.colors,
+        flow: DEFAULT_PREFS.flow,
+        motion: DEFAULT_PREFS.motion,
+        typeface: DEFAULT_PREFS.typeface,
+      };
     }
 
     function writePrefs(prefs) {
       try {
+        const typeface = prefs.typeface === 'serif' || prefs.typeface === 'mono' ? prefs.typeface : 'default';
         window.localStorage.setItem(
           PREF_KEY,
           JSON.stringify({
             colors: prefs.colors === true,
             flow: prefs.flow === true,
             motion: prefs.motion === true,
+            typeface,
           }),
         );
       } catch (error) {
@@ -712,6 +756,38 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /** One choice row: a small radio group, for settings with more than two states. */
+    function ChoiceRow({ description, label, options, value, onChange }) {
+      return h(
+        'div',
+        { className: 'cc-set-row' },
+        h(
+          'div',
+          { className: 'cc-set-copy' },
+          h('span', { className: 'cc-set-label' }, label),
+          h('span', { className: 'cc-set-desc' }, description),
+        ),
+        h(
+          'div',
+          { className: 'cc-set-choice', role: 'radiogroup', 'aria-label': label },
+          options.map((option) =>
+            h(
+              'button',
+              {
+                key: option.value,
+                type: 'button',
+                role: 'radio',
+                'aria-checked': value === option.value,
+                className: 'cc-set-option',
+                onClick: () => onChange(option.value),
+              },
+              option.label,
+            ),
+          ),
+        ),
+      );
+    }
+
     /**
      * Settings page. Local state mirrors storage so the switch responds
      * immediately; the transcript listens to the change event for the paint.
@@ -720,7 +796,7 @@ window.__ModuleLoader__.load({
       const t = typeof props.t === 'function' ? props.t : (key) => key;
       const [prefs, setPrefs] = React.useState(readPrefs);
       const update = (key, value) => {
-        const next = { colors: prefs.colors, flow: prefs.flow, motion: prefs.motion, [key]: value };
+        const next = { colors: prefs.colors, flow: prefs.flow, motion: prefs.motion, typeface: prefs.typeface, [key]: value };
         setPrefs(next);
         writePrefs(next);
         announce();
@@ -750,6 +826,17 @@ window.__ModuleLoader__.load({
             description: t('settings.motion.description'),
             label: t('settings.motion.title'),
             onChange: (value) => update('motion', value),
+          }),
+          h(ChoiceRow, {
+            description: t('settings.typeface.description'),
+            label: t('settings.typeface.title'),
+            value: prefs.typeface,
+            options: [
+              { value: 'default', label: t('settings.typeface.default') },
+              { value: 'serif', label: t('settings.typeface.serif') },
+              { value: 'mono', label: t('settings.typeface.mono') },
+            ],
+            onChange: (value) => update('typeface', value),
           }),
         ),
         h('p', { className: 'cc-set-hint' }, t('settings.hint')),
@@ -809,6 +896,7 @@ window.__ModuleLoader__.load({
           body.toggleAttribute(FLOW_ATTR, prefs.flow);
           body.toggleAttribute(COLORS_ATTR, prefs.colors);
           body.setAttribute(MOTION_ATTR, prefs.motion && prefs.flow ? 'full' : 'off');
+          body.setAttribute(TYPEFACE_ATTR, prefs.typeface);
 
           if (prefs.flow) reasonWindow.start();
           else reasonWindow.stop();
@@ -846,6 +934,7 @@ window.__ModuleLoader__.load({
             document.body.removeAttribute(FLOW_ATTR);
             document.body.removeAttribute(COLORS_ATTR);
             document.body.removeAttribute(MOTION_ATTR);
+            document.body.removeAttribute(TYPEFACE_ATTR);
           }
         };
       }, 'claude-flow: preferences');

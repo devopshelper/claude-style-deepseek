@@ -44,6 +44,7 @@ In the transcript:
 - a hand toggle always wins: a row you open or close yourself is never touched again
 - every tool call is one monospace line with a bullet, the localized tool name and the command or path; output hangs off a thin rail underneath
 - a finished turn's steps collapse into one line whose bullet becomes a chevron on hover, with an indented body when opened
+- the conversation font is opt-in: the harness face, a reading serif, or a terminal monospace, code always in monospace
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -143,7 +144,7 @@ dsh plugin --profile desktop add C:\path\to\claude-style-deepseek
 
 ## Settings
 
-**Settings -> Plugins -> Claude Style** has three switches:
+**Settings -> Plugins -> Claude Style** has three switches and one choice:
 
 - **Claude palette** retracts the token layer, leaving your current theme's colors.
 - **Claude transcript** drops the stylesheet and the thinking-window engine, leaving
@@ -153,6 +154,11 @@ dsh plugin --profile desktop add C:\path\to\claude-style-deepseek
   desktop app reports reduced motion on Windows with animation effects turned off, and
   a theme whose whole point is this window would otherwise stand still. Switch it off
   here for a still transcript.
+- **Conversation font** is optional, and off by default: `Default` keeps the harness
+  face (Thmanyah Sans in current builds), `Serif` sets the transcript in a reading
+  serif, `Mono` sets the transcript and the composer in the terminal face. Code blocks
+  keep their own monospace in every mode. The harness itself exposes no font-family
+  setting and no font token, so this is the only supported way to change it.
 
 All choices persist in the browser's `localStorage` for the profile you are using.
 
