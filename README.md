@@ -183,21 +183,23 @@ The second group holds the sidebar:
   sunburst drawn in code and tinted with the accent.
 - **Folder icon** picks the glyph on workspace rows: the shipped folder, or the Claude
   star nested inside a folder outline.
+- **Auto-compact** turns the host's automatic compaction on or off and picks the
+  threshold between 60% and 90% of the context window. The value is stored by the
+  plugin's Host half in the profile patch, so it survives restarts.
 
-All choices persist in the browser's `localStorage` for the profile you are using.
+All choices persist in the browser's `localStorage` for the profile you are using, except
+the auto-compact threshold, which belongs to the profile patch.
 
 ## Auto-compact
 
 The harness already ships automatic compaction (`dsh-compaction-basic`, `auto: true`),
-so there is no engine to add, only a threshold to expose. The installer can lower it
-for a profile:
+so there is no engine to add, only a threshold to expose. That threshold now lives in
+the plugin's own menu: **Settings -> Plugins -> Claude Style -> Auto-compact**, with an
+on/off switch and a percentage choice (60-90%).
 
-```bat
-install.bat -CompactThreshold 0.75
-```
-
-It writes a marked loader patch block into
-`%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml`:
+The plugin's Host half owns the value and serves it to the page over one same-origin
+route, `/claude-style/auto-compact`. That route writes the same marked block into
+`%USERPROFILE%\.dsh\profiles\<profile>\cordis.patch.yml` that the installer writes:
 
 ```yaml
 # >>> claude-style-deepseek auto-compact
@@ -208,15 +210,20 @@ It writes a marked loader patch block into
 # <<< claude-style-deepseek auto-compact
 ```
 
-Re-running with another value replaces the block, and `install.bat -Uninstall`
-removes it. The change lands on the next app start, because the loader reads the
-profile patch at boot.
+The change is pushed into the running engine when the compaction service exposes a
+writable config, so it can take effect immediately; otherwise the section says
+"restart to apply", because the loader reads the patch at boot.
+
+The installer flag still works for a fresh machine:
+
+```bat
+install.bat -CompactThreshold 0.75
+```
 
 The engine's other knobs live in the same entry: `headroomTokens` (65536),
 `retainRatio`, `retainTokens`, `compactionRetries`, `maxOverflowRetries`,
-`modelPolicies`, and `auto`. Set `auto: false` for manual-only operation and type
-`/compact` in a chat to condense once. A lower threshold compacts sooner and keeps
-the context window smaller, at the cost of summarizing away detail earlier.
+`modelPolicies`, and `auto`. A lower threshold compacts sooner and keeps the context
+window smaller, at the cost of summarizing away detail earlier.
 
 ## Context tab
 

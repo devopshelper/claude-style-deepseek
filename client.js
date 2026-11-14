@@ -500,7 +500,15 @@ window.__ModuleLoader__.load({
       'context.other': 'Unaccounted',
       'context.guide': 'Context usage and what fills it.',
       'effort.note': 'Higher effort means more thorough responses, but takes longer and uses your limits faster.',
-      'context.hint': 'Auto-compact fires from the profile threshold. Lower it with install.bat -CompactThreshold 0.75, then restart.',
+      'settings.compact.title': 'Auto-compact',
+      'settings.compact.description': 'Compact the conversation when context pressure crosses the threshold. The harness already compacts on its own; this moves the line.',
+      'settings.compact.threshold': 'Compact at',
+      'settings.compact.thresholdDescription': 'Share of the context window that triggers compaction. Lower means earlier and smaller, at the cost of summarizing detail away sooner.',
+      'settings.compact.loading': 'Reading the Host setting...',
+      'settings.compact.unavailable': 'This window cannot reach the Host route. Use install.bat -CompactThreshold instead.',
+      'settings.compact.live': 'Applied to the running engine.',
+      'settings.compact.restart': 'Saved. Restart DeepSeek Harness to apply it.',
+      'context.hint': 'Auto-compact is set in Claude Style settings.',
       'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 240px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
@@ -553,7 +561,15 @@ window.__ModuleLoader__.load({
       'context.other': '其他',
       'context.guide': '上下文用量与构成。',
       'effort.note': '更高的推理强度会更细致，但耗时更长，也更快消耗用量。',
-      'context.hint': '自动压缩由 profile 阈值触发。用 install.bat -CompactThreshold 0.75 调低，然后重启。',
+      'settings.compact.title': '自动压缩',
+      'settings.compact.description': '上下文压力越过阈值时压缩对话。Harness 本身就会自动压缩，这里只调整触发线。',
+      'settings.compact.threshold': '压缩阈值',
+      'settings.compact.thresholdDescription': '触发压缩的上下文占用比例。越低越早、占用越小，但会更早把细节压缩掉。',
+      'settings.compact.loading': '正在读取 Host 设置...',
+      'settings.compact.unavailable': '当前窗口无法访问 Host 路由。请改用 install.bat -CompactThreshold。',
+      'settings.compact.live': '已应用到运行中的引擎。',
+      'settings.compact.restart': '已保存。重启 DeepSeek Harness 后生效。',
+      'context.hint': '自动压缩阈值在 Claude 风格设置里调整。',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
@@ -1323,6 +1339,86 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /**
+     * The Host-owned auto-compaction threshold.
+     *
+     * The page reaches its own Host through one same-origin route: read on
+     * mount, write on change. The Host writes the profile patch and applies
+     * the ratio to the running engine when its config is writable, so the
+     * section reports which of the two happened instead of pretending.
+     */
+    function CompactSection({ t }) {
+      const [state, setState] = React.useState(null);
+      const [error, setError] = React.useState('');
+
+      React.useEffect(() => {
+        let live = true;
+        fetch('/claude-style/auto-compact')
+          .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+          .then((data) => {
+            if (live) setState(data);
+          })
+          .catch(() => {
+            if (live) setError(t('settings.compact.unavailable'));
+          });
+        return () => {
+          live = false;
+        };
+      }, []);
+
+      const post = (enabled, threshold) => {
+        setState((previous) => Object.assign({}, previous, { enabled, threshold, notice: '' }));
+        fetch('/claude-style/auto-compact', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ enabled, threshold }),
+        })
+          .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+          .then((data) => {
+            setState(Object.assign({}, data, { notice: data.live ? t('settings.compact.live') : t('settings.compact.restart') }));
+          })
+          .catch(() => setError(t('settings.compact.unavailable')));
+      };
+
+      if (error !== '') {
+        return h(
+          'div',
+          { className: 'cc-set-group' },
+          h(SwitchRow, { checked: false, label: t('settings.compact.title'), description: error, onChange: () => {} }),
+        );
+      }
+
+      if (state === null) {
+        return h(
+          'div',
+          { className: 'cc-set-group' },
+          h('span', { className: 'cc-set-label' }, t('settings.compact.title')),
+          h('span', { className: 'cc-set-desc' }, t('settings.compact.loading')),
+        );
+      }
+
+      const options = [0.6, 0.7, 0.75, 0.8, 0.85, 0.9].map((value) => ({ value: String(value), label: Math.round(value * 100) + '%' }));
+
+      return h(
+        'div',
+        { className: 'cc-set-group' },
+        h(SwitchRow, {
+          checked: state.enabled === true,
+          label: t('settings.compact.title'),
+          description: t('settings.compact.description'),
+          onChange: (value) => post(value, state.threshold === null ? 0.8 : state.threshold),
+        }),
+        h(ChoiceRow, {
+          label: t('settings.compact.threshold'),
+          description: t('settings.compact.thresholdDescription'),
+          value: state.threshold === null ? '' : String(state.threshold),
+          options,
+          onChange: (value) => post(true, Number(value)),
+        }),
+        state.notice ? h('span', { className: 'cc-set-desc' }, state.notice) : null,
+      );
+    }
+
     /** One switch row: label + description on the left, the control right. */
     function SwitchRow({ checked, description, label, onChange }) {
       return h(
@@ -1470,6 +1566,7 @@ window.__ModuleLoader__.load({
             onChange: (value) => update('folderIcon', value),
           }),
         ),
+        h(CompactSection, { t: t }),
         h('p', { className: 'cc-set-hint' }, t('settings.hint')),
         h('p', { className: 'cc-set-hint' }, t('settings.motionHint')),
       );
