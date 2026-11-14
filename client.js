@@ -219,13 +219,22 @@ window.__ModuleLoader__.load({
       'body[data-cc-motion=full] [data-cc-sending]::before{content:"";position:absolute;inset:-5px;border-radius:999px;border:1.5px solid var(--cc-accent,#d97757);animation:cc-send-ring .6s ease-out;pointer-events:none}' +
       'body[data-cc-motion=full] [data-cc-sending]::after{content:"";position:absolute;inset:0;border-radius:999px;background-color:var(--cc-accent,#d97757);-webkit-mask:var(--cc-check) center/46% no-repeat;mask:var(--cc-check) center/46% no-repeat;animation:cc-send-check .6s .16s both;pointer-events:none}' +
 
-      /* ---- the model list, split the way Claude lists models -------------
-         The pane groups models by provider. The group holding the selected
-         model is the main bar; the other groups follow under a "More models"
-         bar with a hairline rule. The host keeps DOM order and its own
-         keyboard walk, so this is paint only: nothing is hidden or moved. */
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] section[data-menu-group][data-cc-model-label]::before{content:attr(data-cc-model-label);display:block;padding:3px 6px 5px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-caption)}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] section[data-cc-model-group=secondary]{margin-top:4px;padding-top:4px;border-top:.5px solid var(--dsw-alias-border-l2)}' +
+      /* ---- the model menu, drilled like Claude's -------------------------
+         The pane keeps the current provider's models on its main screen and
+         puts every other provider behind one "More models" row, which opens
+         the secondary screen with a back row. The engine marks the groups and
+         inserts the two rows; the host still renders every model row. */
+      'body[data-cc-flow] [role="menu"][aria-label="Model"]>section[data-cc-model-group=primary][data-cc-model-label]::before{content:attr(data-cc-model-label);display:block;padding:3px 6px 5px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-caption)}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=main]>section[data-cc-model-group=secondary]{display:none}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=more]>section[data-cc-model-group=primary]{display:none}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=more]>[data-cc-model-more]{display:none}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=main]>[data-cc-model-back]{display:none}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more],' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin:2px 0;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more]:hover,' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more]::after{content:"\\203A";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]::before{content:"\\2039";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
       'body[data-cc-flow] [role="menu"][aria-label="Model"] button[role="menuitemradio"][aria-checked=true]{background:var(--dsw-alias-interactive-bg-hover-accent);border-radius:8px}' +
 
       /* ---- tool calls ----------------------------------------------------
@@ -448,6 +457,7 @@ window.__ModuleLoader__.load({
       'settings.folder.claude': 'Claude',
       'menu.main': 'Main models',
       'menu.more': 'More models',
+      'menu.back': 'Back',
       'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 240px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
@@ -489,6 +499,7 @@ window.__ModuleLoader__.load({
       'settings.folder.claude': 'Claude',
       'menu.main': '主要模型',
       'menu.more': '更多模型',
+      'menu.back': '返回',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
@@ -927,17 +938,40 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ *
-     * The model list split.
+     * The model submenu.
      *
-     * The host's model pane groups models by provider. The group that holds
-     * the selected model is the main bar; every other group is the secondary
-     * list, introduced once by a "More models" bar. Only attributes are
-     * written, so the host's own ordering, focus walk and click handling stay
-     * exactly as shipped.
+     * The host renders one scrolling pane of provider groups. This keeps the
+     * provider group that holds the selected model on the pane's main screen,
+     * puts every other group behind one "More models" row, and gives that
+     * secondary screen a back row. The two rows are the only nodes inserted;
+     * every model row still belongs to the host, and the view is one
+     * attribute on the pane.
      * ------------------------------------------------------------------ */
     function createModelSplit(label) {
       let observer = null;
       let frame = 0;
+
+      const insert = (pane, primary) => {
+        let back = pane.querySelector(':scope > [data-cc-model-back]');
+        if (back === null) {
+          back = document.createElement('button');
+          back.type = 'button';
+          back.setAttribute('role', 'menuitem');
+          back.setAttribute('data-cc-model-back', '');
+          pane.insertBefore(back, pane.firstElementChild);
+        }
+        back.textContent = label('menu.back');
+
+        let more = pane.querySelector(':scope > [data-cc-model-more]');
+        if (more === null) {
+          more = document.createElement('button');
+          more.type = 'button';
+          more.setAttribute('role', 'menuitem');
+          more.setAttribute('data-cc-model-more', '');
+          primary.after(more);
+        }
+        more.textContent = label('menu.more');
+      };
 
       const apply = () => {
         frame = 0;
@@ -949,25 +983,39 @@ window.__ModuleLoader__.load({
 
         const checked = pane.querySelector('[role="menuitemradio"][aria-checked="true"]');
         const primary = checked === null ? groups[0] : checked.closest('section[data-menu-group]') ?? groups[0];
-        let moreLabeled = false;
 
-        /* The main group goes first in the document, not just on screen, so
-           the host's own arrow-key walk stays in the order the reader sees. */
-        if (primary !== pane.firstElementChild) pane.insertBefore(primary, pane.firstElementChild);
+        /* The main screen shows the provider in use; a menu that just opened
+           always starts there, even when the reader left it on the other one. */
+        if (!pane.hasAttribute('data-cc-view')) pane.setAttribute('data-cc-view', 'main');
 
         for (const group of groups) {
-          const isPrimary = group === primary;
-          group.setAttribute('data-cc-model-group', isPrimary ? 'primary' : 'secondary');
-          if (isPrimary) {
-            group.setAttribute('data-cc-model-label', label('menu.main'));
-          } else if (!moreLabeled) {
-            group.setAttribute('data-cc-model-label', label('menu.more'));
-            moreLabeled = true;
-          } else {
-            group.removeAttribute('data-cc-model-label');
-          }
+          group.setAttribute('data-cc-model-group', group === primary ? 'primary' : 'secondary');
+          if (group === primary) group.setAttribute('data-cc-model-label', label('menu.main'));
+          else group.removeAttribute('data-cc-model-label');
         }
+
+        insert(pane, primary);
       };
+
+      const onPress = (event) => {
+        const target = event.target;
+        if (target === null || target === undefined || typeof target.closest !== 'function') return;
+        const row = target.closest('[data-cc-model-more], [data-cc-model-back]');
+        if (row === null) return;
+        const pane = row.closest('[role="menu"][aria-label="Model"]');
+        if (pane === null) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        const toMore = row.hasAttribute('data-cc-model-more');
+        pane.setAttribute('data-cc-view', toMore ? 'more' : 'main');
+        const next = pane.querySelector(toMore ? '[data-cc-model-back]' : '[data-cc-model-more]');
+        if (next !== null) next.focus();
+      };
+
+      /* Capture, so the host's own menu bookkeeping never sees these presses
+         as a model choice. */
+      document.addEventListener('click', onPress, true);
 
       const schedule = () => {
         if (frame !== 0) return;
@@ -978,6 +1026,7 @@ window.__ModuleLoader__.load({
       observer.observe(document.body, { childList: true, subtree: true });
 
       return () => {
+        document.removeEventListener('click', onPress, true);
         observer.disconnect();
         observer = null;
         if (frame !== 0) {

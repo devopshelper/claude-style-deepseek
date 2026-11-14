@@ -49,8 +49,8 @@ In the transcript:
   anything, the whale can become a twelve-ray Claude mark, and workspace folder rows can carry the Claude star
 - in `Full`, sending flies the composer's send control: the icon leaves up and to the right, a ring opens and a
   check lands in the accent, then the control returns
-- the model menu splits like Claude's: the current provider's models come first under a **Main models** bar,
-  everything else follows under **More models** with a hairline rule, and the checked row takes an accent wash
+- the model menu drills like Claude's: the current provider's models are the main screen, **More models ›**
+  opens every other provider on a second screen with a **‹ Back** row, and the checked row takes an accent wash
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -222,9 +222,9 @@ sooner. The window steps only in the `Full` animation profile.
   custom text or masked star is drawn over it, so an emptied field restores the
   original without moving any node. Only the new-session words are rewritten in place,
   with their originals remembered and put back, and only while a custom label is set.
-- The model split writes group attributes and moves the current provider's group to the
-  front of the pane, so the reader's order and the host's arrow-key walk agree. Nothing
-  is hidden, re-parented or re-bound; the host still owns every click.
+- The model submenu writes group attributes, inserts a **More models** row and a **Back** row into the
+  host's model pane, and switches one `data-cc-view` attribute between the two screens. The host still
+  renders every model row and owns every choice; nothing is re-parented or re-bound.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
 
