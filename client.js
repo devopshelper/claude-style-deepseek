@@ -66,6 +66,8 @@ window.__ModuleLoader__.load({
     const BRAND_MARK_ATTR = 'data-cc-brand-mark';
     const FOLDER_ATTR = 'data-cc-folder';
     const SEND_ATTR = 'data-cc-sending';
+    const CONTEXT_TAB_ID = 'claude-style-deepseek/context';
+    const CONTEXT_TAB_KIND = 'cc-context';
     const BRAND_TEXT_PROPERTY = '--cc-brand-text';
 
     /* A twelve-ray mark, drawn in code rather than shipped as a file: the
@@ -278,6 +280,30 @@ window.__ModuleLoader__.load({
       /* ---- the settings page ---------------------------------------------
          Host tokens only, so the page belongs in Settings. Not scoped to the
          transcript: it renders outside the conversation column. */
+      /* ---- the context panel ---------------------------------------------
+         A right-sidebar tab fed by the token meter's own projections: the
+         occupancy headline, one bar split the way the meter splits the
+         window, and the three buckets it measures. Nothing here reads the
+         host's DOM. */
+      '.cc-ctx{display:flex;flex-direction:column;gap:10px;padding:14px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:1.5}' +
+      '.cc-ctx-empty{color:var(--dsw-alias-label-tertiary);font-size:12px}' +
+      '.cc-ctx-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}' +
+      '.cc-ctx-percent{font-size:15px;font-weight:600}' +
+      '.cc-ctx-tokens{color:var(--dsw-alias-label-tertiary);font-size:11px;font-variant-numeric:tabular-nums}' +
+      '.cc-ctx-bar{display:flex;height:6px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-layer-3)}' +
+      '.cc-ctx-seg{height:100%;min-width:1px}' +
+      '.cc-ctx-messages{background:#4d8dff}' +
+      '.cc-ctx-tools{background:#ff9f5a}' +
+      '.cc-ctx-system{background:#3ecf9a}' +
+      '.cc-ctx-other{background:#9a958a}' +
+      '.cc-ctx-rows{display:flex;flex-direction:column;gap:4px}' +
+      '.cc-ctx-row{display:flex;align-items:center;gap:8px;font-size:12px}' +
+      '.cc-ctx-dot{width:8px;height:8px;border-radius:2px;flex:none}' +
+      '.cc-ctx-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.cc-ctx-val{font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}' +
+      '.cc-ctx-pct{width:54px;text-align:right;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary)}' +
+      '.cc-ctx-sep{height:1px;margin:2px 0;background:var(--dsw-alias-border-l2)}' +
+      '.cc-ctx-hint{font-size:11px;color:var(--dsw-alias-label-tertiary)}' +
       '.cc-set{display:flex;flex-direction:column;gap:14px;max-width:720px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:1.5}' +
       '.cc-set-title{margin:0;font-size:15px;font-weight:600}' +
       '.cc-set-intro{margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px}' +
@@ -458,6 +484,16 @@ window.__ModuleLoader__.load({
       'menu.main': 'Main models',
       'menu.more': 'More models',
       'menu.back': 'Back',
+      'context.title': 'Context',
+      'context.empty': 'No context figures yet. They appear once a model reports both pressure and capacity.',
+      'context.messages': 'Messages',
+      'context.tools': 'Tools',
+      'context.system': 'System prompt',
+      'context.free': 'Free space',
+      'context.used': 'used',
+      'context.other': 'Unaccounted',
+      'context.guide': 'Context usage and what fills it.',
+      'context.hint': 'Auto-compact fires from the profile threshold. Lower it with install.bat -CompactThreshold 0.75, then restart.',
       'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 240px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
@@ -500,6 +536,16 @@ window.__ModuleLoader__.load({
       'menu.main': '主要模型',
       'menu.more': '更多模型',
       'menu.back': '返回',
+      'context.title': '上下文',
+      'context.empty': '还没有上下文数据。等模型同时报告压力与容量后才会出现。',
+      'context.messages': '消息',
+      'context.tools': '工具',
+      'context.system': '系统提示',
+      'context.free': '剩余空间',
+      'context.used': '已用',
+      'context.other': '其他',
+      'context.guide': '上下文用量与构成。',
+      'context.hint': '自动压缩由 profile 阈值触发。用 install.bat -CompactThreshold 0.75 调低，然后重启。',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
@@ -1036,6 +1082,86 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** A compact token count, the way the meter panel prints one. */
+    function formatCount(value) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
+      if (value < 1000) return String(Math.round(value));
+      if (value < 1000000) return (Math.round(value / 100) / 10) + 'k';
+      return (Math.round(value / 100000) / 10) + 'M';
+    }
+
+    /**
+     * The right-sidebar Context tab.
+     *
+     * Everything comes from the token meter's client projections: the same
+     * numbers the composer meter reads, so the panel and the meter never
+     * disagree. The bar proportions those buckets over the whole window and
+     * the rest of the window is the free row.
+     */
+    function ContextPanel(props) {
+      const t = props.t;
+      const pressure = props.useProjection('contextPressure');
+      const breakdown = props.useProjection('contextBreakdown');
+
+      const used = pressure === undefined ? undefined : (pressure.projectedTokens ?? pressure.pressureTokens);
+      const capacity = pressure === undefined ? undefined : pressure.contextWindow;
+      if (used === undefined || capacity === undefined || capacity <= 0) {
+        return h('div', { className: 'cc-ctx cc-ctx-empty' }, t('context.empty'));
+      }
+
+      const percent = Math.min(100, Math.round((used / capacity) * 100));
+      const share = (tokens) => Math.min(100, (tokens / capacity) * 100);
+      const rows = [
+        { key: 'messages', label: t('context.messages'), tokens: breakdown?.messageTokens ?? 0, cls: 'cc-ctx-messages' },
+        { key: 'tools', label: t('context.tools'), tokens: breakdown?.toolsTokens ?? 0, cls: 'cc-ctx-tools' },
+        { key: 'system', label: t('context.system'), tokens: breakdown?.systemTokens ?? 0, cls: 'cc-ctx-system' },
+      ];
+      const accounted = rows.reduce((sum, row) => sum + row.tokens, 0);
+      const other = Math.max(0, used - accounted);
+      const free = Math.max(0, capacity - used);
+      const segments = other > 0
+        ? rows.concat([{ key: 'other', tokens: other, cls: 'cc-ctx-other' }])
+        : rows;
+
+      const row = (item, dots) => h(
+        'div',
+        { key: item.key, className: 'cc-ctx-row' },
+        dots ? h('span', { className: 'cc-ctx-dot ' + item.cls }) : h('span', { className: 'cc-ctx-dot' }),
+        h('span', { className: 'cc-ctx-name' }, item.label),
+        h('span', { className: 'cc-ctx-val' }, formatCount(item.tokens)),
+        h('span', { className: 'cc-ctx-pct' }, item.tokens === undefined ? '' : (share(item.tokens)).toFixed(1) + '%'),
+      );
+
+      return h(
+        'div',
+        { className: 'cc-ctx' },
+        h(
+          'div',
+          { className: 'cc-ctx-head' },
+          h('span', { className: 'cc-ctx-percent' }, percent + '% ' + t('context.used')),
+          h('span', { className: 'cc-ctx-tokens' }, formatCount(used) + ' / ' + formatCount(capacity)),
+        ),
+        h(
+          'div',
+          { className: 'cc-ctx-bar' },
+          segments.map((segment) => h('span', {
+            key: segment.key,
+            className: 'cc-ctx-seg ' + segment.cls,
+            style: { width: share(segment.tokens) + '%' },
+          })),
+        ),
+        h(
+          'div',
+          { className: 'cc-ctx-rows' },
+          rows.map((item) => row(item, true)),
+          other > 0 ? row({ key: 'other', label: t('context.other'), tokens: other, cls: 'cc-ctx-other' }, true) : null,
+          h('div', { className: 'cc-ctx-sep' }),
+          row({ key: 'free', label: t('context.free'), tokens: free, cls: 'cc-ctx-free' }, false),
+        ),
+        h('div', { className: 'cc-ctx-hint' }, t('context.hint')),
+      );
+    }
+
     /** One text row: a field that commits on blur or Enter, so typing does not repaint the transcript per keystroke. */
     function TextRow({ description, label, placeholder, value, onCommit }) {
       return h(
@@ -1367,6 +1493,40 @@ window.__ModuleLoader__.load({
 
       /* ---- dictionaries -------------------------------------------------- */
       ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'claude-flow: dictionaries');
+
+      /* ---- the Context tab in the right sidebar --------------------------- */
+      const label = (key) => {
+        try {
+          return ctx.locale.bind(NS)(key);
+        } catch (error) {
+          return key;
+        }
+      };
+      const sidebarTabs = typeof ctx.get === 'function' ? ctx.get('sidebarRightTabs') : undefined;
+      if (sidebarTabs && typeof sidebarTabs.register === 'function') {
+        ctx.effect(() => {
+          let disposeType = null;
+          let disposeBody = null;
+          try {
+            disposeType = sidebarTabs.register({
+              id: CONTEXT_TAB_ID,
+              kind: CONTEXT_TAB_KIND,
+              title: () => label('context.title'),
+              guide: [{ id: 'context', title: label('context.title'), description: label('context.guide') }],
+            });
+            disposeBody = ctx.slots.register(
+              { name: 'sidebar.right.pane.tab', key: CONTEXT_TAB_ID },
+              (props) => h(ContextPanel, Object.assign({}, props, { t: label })),
+            );
+          } catch (error) {
+            /* a host without the right sidebar keeps the rest of the skin */
+          }
+          return () => {
+            if (disposeBody !== null) disposeBody();
+            if (disposeType !== null) disposeType();
+          };
+        }, 'claude-flow: context tab');
+      }
 
       /* ---- palette layer, flow attribute, thinking window ----------------- */
       const reasonWindow = createReasonWindow();

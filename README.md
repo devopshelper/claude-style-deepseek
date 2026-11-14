@@ -51,6 +51,8 @@ In the transcript:
   check lands in the accent, then the control returns
 - the model menu drills like Claude's: the current provider's models are the main screen, **More models ›**
   opens every other provider on a second screen with a **‹ Back** row, and the checked row takes an accent wash
+- a **Context** tab in the right sidebar: percent and tokens used, a bar split into messages, tools and system
+  prompt, plus free space and any unaccounted remainder, read from the token meter's own projections
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -214,6 +216,20 @@ The engine's other knobs live in the same entry: `headroomTokens` (65536),
 `modelPolicies`, and `auto`. Set `auto: false` for manual-only operation and type
 `/compact` in a chat to condense once. A lower threshold compacts sooner and keeps
 the context window smaller, at the cost of summarizing away detail earlier.
+
+## Context tab
+
+The right sidebar gains a **Context** tab: open the right sidebar and pick **Context**
+from its guide. It shows the numbers the composer meter already knows, laid out the way
+Claude's context panel does:
+
+- percent used and `used / capacity` in tokens
+- a bar split into messages, tools and system prompt, plus the unaccounted remainder
+- each bucket's tokens and share of the window, a free-space row, and a hint that points
+  at the profile threshold above
+
+It reads the `contextPressure` and `contextBreakdown` client projections, so it agrees
+with the meter and stays live during a turn. Nothing is scraped from the host's DOM.
 
 ## Tuning
 
