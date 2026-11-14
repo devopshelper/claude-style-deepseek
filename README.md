@@ -49,8 +49,9 @@ In the transcript:
   anything, the whale can become a twelve-ray Claude mark, and workspace folder rows can carry the Claude star
 - in `Full`, sending flies the composer's send control: the icon leaves up and to the right, a ring opens and a
   check lands in the accent, then the control returns
-- the model menu drills like Claude's: the current provider's models are the main screen, **More models ›**
-  opens every other provider on a second screen with a **‹ Back** row, and the checked row takes an accent wash
+- the model menu drills like Claude's: the current provider's models are the main screen, flat (its provider
+  heading is hidden), **More models ›** opens every other provider on a second screen with a **‹ Back** row,
+  the checked row takes an accent wash, and the **Effort** screen opens with one line on what higher effort costs
 - a **Context** tab in the right sidebar: percent and tokens used, a bar split into messages, tools and system
   prompt, plus free space and any unaccounted remainder, read from the token meter's own projections
 

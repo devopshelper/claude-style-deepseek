@@ -238,6 +238,12 @@ window.__ModuleLoader__.load({
       'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more]::after{content:"\\203A";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
       'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]::before{content:"\\2039";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
       'body[data-cc-flow] [role="menu"][aria-label="Model"] button[role="menuitemradio"][aria-checked=true]{background:var(--dsw-alias-interactive-bg-hover-accent);border-radius:8px}' +
+      /* A flat list, the way Claude lists models: the provider heading of the
+         group in use is redundant beside its own tab, and the secondary screen
+         keeps its headings because it really is several providers. */
+      'body[data-cc-flow] [role="menu"][aria-label="Model"]>section[data-cc-model-group=primary] [data-menu-group-heading]{display:none}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"]>section[data-cc-model-group=primary]{padding-top:0}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Effort"] [data-cc-effort-note]{padding:2px 8px 8px;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.45}' +
 
       /* ---- tool calls ----------------------------------------------------
          One line per call: a bullet, the localized tool title, then the
@@ -493,6 +499,7 @@ window.__ModuleLoader__.load({
       'context.used': 'used',
       'context.other': 'Unaccounted',
       'context.guide': 'Context usage and what fills it.',
+      'effort.note': 'Higher effort means more thorough responses, but takes longer and uses your limits faster.',
       'context.hint': 'Auto-compact fires from the profile threshold. Lower it with install.bat -CompactThreshold 0.75, then restart.',
       'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 240px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
@@ -545,6 +552,7 @@ window.__ModuleLoader__.load({
       'context.used': '已用',
       'context.other': '其他',
       'context.guide': '上下文用量与构成。',
+      'effort.note': '更高的推理强度会更细致，但耗时更长，也更快消耗用量。',
       'context.hint': '自动压缩由 profile 阈值触发。用 install.bat -CompactThreshold 0.75 调低，然后重启。',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
@@ -1022,6 +1030,17 @@ window.__ModuleLoader__.load({
       const apply = () => {
         frame = 0;
         if (typeof document === 'undefined') return;
+
+        /* The effort screen gets one line of its own copy above the levels:
+           the host names the levels, not what choosing one costs. */
+        const effort = document.querySelector('[role="menu"][aria-label="Effort"]');
+        if (effort !== null && effort.querySelector(':scope > [data-cc-effort-note]') === null) {
+          const note = document.createElement('div');
+          note.setAttribute('data-cc-effort-note', '');
+          note.textContent = label('effort.note');
+          effort.insertBefore(note, effort.firstElementChild);
+        }
+
         const pane = document.querySelector('[role="menu"][aria-label="Model"]');
         if (pane === null) return;
         const groups = [...pane.querySelectorAll(':scope > section[data-menu-group]')];
