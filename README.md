@@ -45,6 +45,8 @@ In the transcript:
 - every tool call is one monospace line with a bullet, the localized tool name and the command or path; output hangs off a thin rail underneath
 - a finished turn's steps collapse into one line whose bullet becomes a chevron on hover, with an indented body when opened
 - the conversation font is opt-in: the harness face, a reading serif, or a terminal monospace, code always in monospace
+- the sidebar's identity is yours: the DeepSeek wordmark can become your own name, the new-session button can say
+  anything, the whale can become a twelve-ray Claude mark, and workspace folder rows can carry the Claude star
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -160,6 +162,17 @@ dsh plugin --profile desktop add C:\path\to\claude-style-deepseek
   keep their own monospace in every mode. The harness itself exposes no font-family
   setting and no font token, so this is the only supported way to change it.
 
+The second group holds the sidebar:
+
+- **Brand name** replaces the DeepSeek wordmark with your own text (the wordmark is an
+  SVG, so the text is drawn over its slot). Empty restores the shipped mark.
+- **New session label** replaces the words on the sidebar button and its accessible
+  name. Empty restores the shipped label.
+- **Brand mark** picks the glyph beside the name: the shipped whale, or a twelve-ray
+  sunburst drawn in code and tinted with the accent.
+- **Folder icon** picks the glyph on workspace rows: the shipped folder, or the Claude
+  star nested inside a folder outline.
+
 All choices persist in the browser's `localStorage` for the profile you are using.
 
 ## Tuning
@@ -197,6 +210,11 @@ sooner.
   attributes plus the `height` and `transform` it owns on that row. It stops on
   unload, when the animation switch is off, or when the transcript layer is switched
   off.
+- The sidebar identity rides on the slots the host publishes (`sidebar.brand.name`,
+  `sidebar.brand.mark`) and on `:has()`: the shipped SVG stays in the document and the
+  custom text or masked star is drawn over it, so an emptied field restores the
+  original without moving any node. Only the new-session words are rewritten in place,
+  with their originals remembered and put back, and only while a custom label is set.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
 

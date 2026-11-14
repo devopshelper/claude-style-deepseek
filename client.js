@@ -42,13 +42,54 @@ window.__ModuleLoader__.load({
        `typeface` is optional for the same reason the palette is: the harness
        fixes its font in CSS with no setting to change it, so the only polite
        way to offer one is to leave the shipped font alone until a reader asks
-       for another. */
-    const DEFAULT_PREFS = { colors: true, flow: true, motion: true, typeface: 'default' };
+       for another.
+
+       The sidebar names are the same kind of choice: the wordmark is an SVG
+       and the labels are React text, so anything the reader types here is
+       applied over them, never instead of them. */
+    const DEFAULT_PREFS = {
+      colors: true,
+      flow: true,
+      motion: true,
+      typeface: 'default',
+      brand: '',
+      newSession: '',
+      brandMark: 'default',
+      folderIcon: 'default',
+    };
 
     const FLOW_ATTR = 'data-cc-flow';
     const COLORS_ATTR = 'data-cc-colors';
     const MOTION_ATTR = 'data-cc-motion';
     const TYPEFACE_ATTR = 'data-cc-typeface';
+    const BRAND_ATTR = 'data-cc-brand';
+    const BRAND_MARK_ATTR = 'data-cc-brand-mark';
+    const FOLDER_ATTR = 'data-cc-folder';
+    const BRAND_TEXT_PROPERTY = '--cc-brand-text';
+
+    /* A twelve-ray mark, drawn in code rather than shipped as a file: the
+       Claude sunburst in one generated SVG, tinted by the mask's background
+       so it follows the accent in either scheme. The folder keeps a folder
+       outline and nests a small star inside it, so the row still reads as a
+       workspace. */
+    function rayMark() {
+      let rays = '';
+      for (let i = 0; i < 12; i += 1) {
+        const angle = i * 30;
+        rays += '<rect x="11.15" y="1.2" width="1.7" height="7.4" rx=".85" transform="rotate(' + angle + ' 12 12)"/>';
+      }
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#fff">' + rays + '</g></svg>';
+    }
+
+    const FOLDER_MARK_SVG =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
+      '<path d="M3.6 7.1c0-.8.7-1.5 1.5-1.5h3.6l1.6 1.9h7.7c.8 0 1.5.7 1.5 1.5v7.4c0 .8-.7 1.5-1.5 1.5H5.1c-.8 0-1.5-.7-1.5-1.5z" fill="none" stroke="#fff" stroke-width="1.5"/>' +
+      '<g stroke="#fff" stroke-width="1.5" stroke-linecap="round">' +
+      '<path d="M12 10.5v5"/><path d="M9.85 11.75l4.3 2.5"/><path d="M14.15 11.75l-4.3 2.5"/>' +
+      '</g></svg>';
+
+    const CLAUDE_MARK_URI = 'data:image/svg+xml,' + encodeURIComponent(rayMark());
+    const FOLDER_MARK_URI = 'data:image/svg+xml,' + encodeURIComponent(FOLDER_MARK_SVG);
 
     /**
      * The stylesheet. Every transcript rule is scoped to `body[data-cc-flow]`,
@@ -101,6 +142,21 @@ window.__ModuleLoader__.load({
          both modes; the host sets that family on code elements directly. */
       'body[data-cc-flow][data-cc-typeface=serif] [data-chat-flow]{font-family:var(--cc-prose)}' +
       'body[data-cc-flow][data-cc-typeface=mono] :is([data-chat-flow],[data-composer-seat]){font-family:var(--cc-mono)}' +
+
+      /* ---- sidebar identity ----------------------------------------------
+         The wordmark is an SVG and the sidebar labels are React text, so the
+         sidebar marks are found through the slots the host publishes and the
+         shipped art stays in the document underneath: an emptied field
+         removes the attribute and the original returns. The mark is a
+         generated twelve-ray sunburst, masked so the accent tints it; the
+         folder option keeps the folder outline and nests the same star. */
+      'body[data-cc-brand] span:has(>[data-slot="sidebar.brand.name"]) svg{display:none}' +
+      'body[data-cc-brand] span:has(>[data-slot="sidebar.brand.name"])::before{content:var(--cc-brand-text);display:block;flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:inherit;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:24px;color:var(--dsw-alias-label-primary)}' +
+      'body[data-cc-brand-mark=claude] span:has(>[data-slot="sidebar.brand.mark"]) svg{display:none}' +
+      'body[data-cc-brand-mark=claude] span:has(>[data-slot="sidebar.brand.mark"])::before{content:"";display:block;flex:none;width:18px;height:18px;background-color:var(--cc-accent,#d97757);-webkit-mask:var(--cc-claude-mark) center/contain no-repeat;mask:var(--cc-claude-mark) center/contain no-repeat}' +
+      'body[data-cc-folder=claude] svg[data-icon^="dsw-icon-folder"]>use{display:none}' +
+      'body[data-cc-folder=claude] svg[data-icon^="dsw-icon-folder"]{background-color:var(--cc-accent,#d97757);-webkit-mask:var(--cc-folder-mark) center/contain no-repeat;mask:var(--cc-folder-mark) center/contain no-repeat}' +
+      'body[data-cc-brand],body[data-cc-brand-mark=claude],body[data-cc-folder=claude]{--cc-claude-mark:url("' + CLAUDE_MARK_URI + '");--cc-folder-mark:url("' + FOLDER_MARK_URI + '")}' +
 
       /* ---- user prompt ---------------------------------------------------
          A prompt block, not a chat bubble: full measure, transparent, one
@@ -203,6 +259,9 @@ window.__ModuleLoader__.load({
       '.cc-set-option:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
       '.cc-set-option[aria-checked=true]{background:var(--cc-accent-strong,#c96442);border-color:transparent;color:#fff}' +
       '.cc-set-option:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}' +
+      '.cc-set-input{flex:none;width:180px;margin-top:1px;padding:5px 9px;border:.5px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px}' +
+      '.cc-set-input::placeholder{color:var(--dsw-alias-label-caption)}' +
+      '.cc-set-input:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px;border-color:transparent}' +
       '.cc-set-hint{margin:0;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:11px}' +
       '.cc-set-hint code{font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:11px;padding:0 3px;border-radius:3px;background:var(--dsw-alias-markdown-inline-code)}' +
       '@media (prefers-reduced-motion:reduce){.cc-set-switch,.cc-set-switch::after,.cc-set-option{transition:none}}';
@@ -343,6 +402,20 @@ window.__ModuleLoader__.load({
       'settings.typeface.default': 'Default',
       'settings.typeface.serif': 'Serif',
       'settings.typeface.mono': 'Mono',
+      'settings.brand.title': 'Brand name',
+      'settings.brand.description': 'Replaces the wordmark in the sidebar with your own text. Leave it empty for the shipped mark.',
+      'settings.brand.placeholder': 'DeepSeek',
+      'settings.newSession.title': 'New session label',
+      'settings.newSession.description': 'Text on the sidebar new-session button. Leave it empty for the shipped label.',
+      'settings.newSession.placeholder': 'New Session',
+      'settings.brandMark.title': 'Brand mark',
+      'settings.brandMark.description': 'The glyph beside the brand name. Claude draws a twelve-ray sunburst.',
+      'settings.brandMark.default': 'Default',
+      'settings.brandMark.claude': 'Claude',
+      'settings.folder.title': 'Folder icon',
+      'settings.folder.description': 'The folder glyph on workspace rows. Claude nests its star inside the folder.',
+      'settings.folder.default': 'Default',
+      'settings.folder.claude': 'Claude',
       'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 400px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
@@ -366,12 +439,32 @@ window.__ModuleLoader__.load({
       'settings.typeface.default': '默认',
       'settings.typeface.serif': '衬线',
       'settings.typeface.mono': '等宽',
+      'settings.brand.title': '品牌名称',
+      'settings.brand.description': '用你自己的文字替换侧栏的字标。留空则保留自带字标。',
+      'settings.brand.placeholder': 'DeepSeek',
+      'settings.newSession.title': '新会话按钮文字',
+      'settings.newSession.description': '侧栏新会话按钮上的文字。留空则保留自带文字。',
+      'settings.newSession.placeholder': 'New Session',
+      'settings.brandMark.title': '品牌标记',
+      'settings.brandMark.description': '品牌名旁的图形。Claude 画的是十二道光芒。',
+      'settings.brandMark.default': '默认',
+      'settings.brandMark.claude': 'Claude',
+      'settings.folder.title': '文件夹图标',
+      'settings.folder.description': '工作区行上的文件夹图形。Claude 会在文件夹里嵌一颗星。',
+      'settings.folder.default': '默认',
+      'settings.folder.claude': 'Claude',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
       'settings.off': '关',
       'label.title': 'Claude 风格',
     };
+
+    /** A reader-supplied name, trimmed, with control characters dropped. */
+    function text(value, max) {
+      if (typeof value !== 'string') return '';
+      return value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
+    }
 
     /** Read the switches; anything unreadable falls back to "on". */
     function readPrefs() {
@@ -381,11 +474,17 @@ window.__ModuleLoader__.load({
           const parsed = JSON.parse(raw);
           if (parsed !== null && typeof parsed === 'object') {
             const typeface = parsed.typeface === 'serif' || parsed.typeface === 'mono' ? parsed.typeface : 'default';
+            const brandMark = parsed.brandMark === 'claude' ? 'claude' : 'default';
+            const folderIcon = parsed.folderIcon === 'claude' ? 'claude' : 'default';
             return {
               colors: parsed.colors !== false,
               flow: parsed.flow !== false,
               motion: parsed.motion !== false,
               typeface,
+              brand: text(parsed.brand, 24),
+              newSession: text(parsed.newSession, 24),
+              brandMark,
+              folderIcon,
             };
           }
         }
@@ -397,12 +496,18 @@ window.__ModuleLoader__.load({
         flow: DEFAULT_PREFS.flow,
         motion: DEFAULT_PREFS.motion,
         typeface: DEFAULT_PREFS.typeface,
+        brand: DEFAULT_PREFS.brand,
+        newSession: DEFAULT_PREFS.newSession,
+        brandMark: DEFAULT_PREFS.brandMark,
+        folderIcon: DEFAULT_PREFS.folderIcon,
       };
     }
 
     function writePrefs(prefs) {
       try {
         const typeface = prefs.typeface === 'serif' || prefs.typeface === 'mono' ? prefs.typeface : 'default';
+        const brandMark = prefs.brandMark === 'claude' ? 'claude' : 'default';
+        const folderIcon = prefs.folderIcon === 'claude' ? 'claude' : 'default';
         window.localStorage.setItem(
           PREF_KEY,
           JSON.stringify({
@@ -410,6 +515,10 @@ window.__ModuleLoader__.load({
             flow: prefs.flow === true,
             motion: prefs.motion === true,
             typeface,
+            brand: text(prefs.brand, 24),
+            newSession: text(prefs.newSession, 24),
+            brandMark,
+            folderIcon,
           }),
         );
       } catch (error) {
@@ -734,6 +843,148 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** One text row: a field that commits on blur or Enter, so typing does not repaint the transcript per keystroke. */
+    function TextRow({ description, label, placeholder, value, onCommit }) {
+      return h(
+        'div',
+        { className: 'cc-set-row' },
+        h(
+          'div',
+          { className: 'cc-set-copy' },
+          h('span', { className: 'cc-set-label' }, label),
+          h('span', { className: 'cc-set-desc' }, description),
+        ),
+        h('input', {
+          type: 'text',
+          className: 'cc-set-input',
+          defaultValue: value,
+          placeholder,
+          maxLength: 24,
+          'aria-label': label,
+          onBlur: (event) => onCommit(event.target.value),
+          onKeyDown: (event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          },
+        }),
+      );
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Sidebar labels.
+     *
+     * The new-session button's words are React text rather than a slot, so the
+     * text is swapped in place and put back when the field is emptied. The
+     * wordmark needs no swap: it is an SVG behind a slot, and the stylesheet
+     * draws the custom text over it. Original words are captured before the
+     * first write, per element; an observer re-applies after a React render
+     * replaces the node, and only while a custom label is set.
+     * ------------------------------------------------------------------ */
+    function createLabelSwap() {
+      const originals = new WeakMap();
+      const tracked = new Set();
+      let observer = null;
+      let frame = 0;
+      let wanted = '';
+
+      const remember = (element) => {
+        let record = originals.get(element);
+        if (record === undefined) {
+          record = { text: element.textContent, aria: element.getAttribute('aria-label') };
+          originals.set(element, record);
+          tracked.add(element);
+        }
+        return record;
+      };
+
+      const labelSpanOf = (button) => {
+        for (const span of button.querySelectorAll('span')) {
+          if (span.children.length !== 0) continue;
+          if (span.closest('[aria-hidden="true"]') !== null) continue;
+          if (span.textContent.trim() === '') continue;
+          return span;
+        }
+        return null;
+      };
+
+      const apply = () => {
+        frame = 0;
+        if (typeof document === 'undefined') return;
+
+        const buttons = document.querySelectorAll('[data-slot="sidebar.session.action"] button');
+        for (const button of buttons) {
+          const label = labelSpanOf(button);
+          if (label === null) continue;
+          const record = remember(label);
+          const ariaRecord = remember(button);
+          if (wanted !== '') {
+            if (label.textContent !== wanted) label.textContent = wanted;
+            if (button.getAttribute('aria-label') !== wanted) button.setAttribute('aria-label', wanted);
+          } else {
+            if (label.textContent !== record.text) label.textContent = record.text;
+            if (ariaRecord.aria !== null && button.getAttribute('aria-label') !== ariaRecord.aria) {
+              button.setAttribute('aria-label', ariaRecord.aria);
+            }
+          }
+        }
+
+        /* The brand button starts a new session too, so its accessible name follows. */
+        const mark = document.querySelector('[data-slot="sidebar.brand.mark"]');
+        const brandButton = mark === null ? null : mark.closest('button');
+        if (brandButton !== null) {
+          const record = remember(brandButton);
+          if (wanted !== '') {
+            if (brandButton.getAttribute('aria-label') !== wanted) brandButton.setAttribute('aria-label', wanted);
+          } else if (record.aria !== null && brandButton.getAttribute('aria-label') !== record.aria) {
+            brandButton.setAttribute('aria-label', record.aria);
+          }
+        }
+
+        for (const element of tracked) {
+          if (!element.isConnected) tracked.delete(element);
+        }
+      };
+
+      const schedule = () => {
+        if (frame !== 0) return;
+        frame = window.requestAnimationFrame(apply);
+      };
+
+      const observe = (on) => {
+        if (on && observer === null) {
+          const scope = document.querySelector('[data-slot="sidebar"]') ?? document.body;
+          observer = new MutationObserver(schedule);
+          observer.observe(scope, { childList: true, subtree: true, characterData: true });
+        } else if (!on && observer !== null) {
+          observer.disconnect();
+          observer = null;
+        }
+      };
+
+      return {
+        set(value) {
+          wanted = value;
+          if (wanted === '') {
+            if (observer !== null) {
+              observe(false);
+              apply();
+            }
+            return;
+          }
+          observe(true);
+          apply();
+        },
+        stop() {
+          wanted = '';
+          observe(false);
+          if (frame !== 0) {
+            window.cancelAnimationFrame(frame);
+            frame = 0;
+          }
+          apply();
+        },
+      };
+    }
+
     /** One switch row: label + description on the left, the control right. */
     function SwitchRow({ checked, description, label, onChange }) {
       return h(
@@ -796,7 +1047,7 @@ window.__ModuleLoader__.load({
       const t = typeof props.t === 'function' ? props.t : (key) => key;
       const [prefs, setPrefs] = React.useState(readPrefs);
       const update = (key, value) => {
-        const next = { colors: prefs.colors, flow: prefs.flow, motion: prefs.motion, typeface: prefs.typeface, [key]: value };
+        const next = Object.assign({}, prefs, { [key]: value });
         setPrefs(next);
         writePrefs(next);
         announce();
@@ -837,6 +1088,44 @@ window.__ModuleLoader__.load({
               { value: 'mono', label: t('settings.typeface.mono') },
             ],
             onChange: (value) => update('typeface', value),
+          }),
+        ),
+        h(
+          'div',
+          { className: 'cc-set-group' },
+          h(TextRow, {
+            label: t('settings.brand.title'),
+            description: t('settings.brand.description'),
+            placeholder: t('settings.brand.placeholder'),
+            value: prefs.brand,
+            onCommit: (value) => update('brand', text(value, 24)),
+          }),
+          h(TextRow, {
+            label: t('settings.newSession.title'),
+            description: t('settings.newSession.description'),
+            placeholder: t('settings.newSession.placeholder'),
+            value: prefs.newSession,
+            onCommit: (value) => update('newSession', text(value, 24)),
+          }),
+          h(ChoiceRow, {
+            label: t('settings.brandMark.title'),
+            description: t('settings.brandMark.description'),
+            value: prefs.brandMark,
+            options: [
+              { value: 'default', label: t('settings.brandMark.default') },
+              { value: 'claude', label: t('settings.brandMark.claude') },
+            ],
+            onChange: (value) => update('brandMark', value),
+          }),
+          h(ChoiceRow, {
+            label: t('settings.folder.title'),
+            description: t('settings.folder.description'),
+            value: prefs.folderIcon,
+            options: [
+              { value: 'default', label: t('settings.folder.default') },
+              { value: 'claude', label: t('settings.folder.claude') },
+            ],
+            onChange: (value) => update('folderIcon', value),
           }),
         ),
         h('p', { className: 'cc-set-hint' }, t('settings.hint')),
@@ -884,6 +1173,7 @@ window.__ModuleLoader__.load({
 
       /* ---- palette layer, flow attribute, thinking window ----------------- */
       const reasonWindow = createReasonWindow();
+      const labels = createLabelSwap();
 
       ctx.effect(() => {
         let paletteLayer = null;
@@ -897,6 +1187,20 @@ window.__ModuleLoader__.load({
           body.toggleAttribute(COLORS_ATTR, prefs.colors);
           body.setAttribute(MOTION_ATTR, prefs.motion && prefs.flow ? 'full' : 'off');
           body.setAttribute(TYPEFACE_ATTR, prefs.typeface);
+          body.setAttribute(BRAND_MARK_ATTR, prefs.brandMark);
+          body.setAttribute(FOLDER_ATTR, prefs.folderIcon);
+
+          /* The wordmark text is a property the stylesheet reads through
+             `content`, so it needs a CSS string literal, not a bare value. */
+          if (prefs.brand !== '') {
+            body.setAttribute(BRAND_ATTR, '');
+            body.style.setProperty(BRAND_TEXT_PROPERTY, JSON.stringify(prefs.brand));
+          } else {
+            body.removeAttribute(BRAND_ATTR);
+            body.style.removeProperty(BRAND_TEXT_PROPERTY);
+          }
+
+          labels.set(prefs.newSession);
 
           if (prefs.flow) reasonWindow.start();
           else reasonWindow.stop();
@@ -929,12 +1233,17 @@ window.__ModuleLoader__.load({
           window.removeEventListener(CHANGE_EVENT, onChange);
           window.removeEventListener('storage', onStorage);
           reasonWindow.stop();
+          labels.stop();
           if (paletteLayer !== null) paletteLayer();
           if (typeof document !== 'undefined' && document.body !== null) {
             document.body.removeAttribute(FLOW_ATTR);
             document.body.removeAttribute(COLORS_ATTR);
             document.body.removeAttribute(MOTION_ATTR);
             document.body.removeAttribute(TYPEFACE_ATTR);
+            document.body.removeAttribute(BRAND_ATTR);
+            document.body.removeAttribute(BRAND_MARK_ATTR);
+            document.body.removeAttribute(FOLDER_ATTR);
+            document.body.style.removeProperty(BRAND_TEXT_PROPERTY);
           }
         };
       }, 'claude-flow: preferences');
