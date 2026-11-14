@@ -47,6 +47,10 @@ In the transcript:
 - the conversation font is opt-in: the harness face, a reading serif, or a terminal monospace, code always in monospace
 - the sidebar's identity is yours: the DeepSeek wordmark can become your own name, the new-session button can say
   anything, the whale can become a twelve-ray Claude mark, and workspace folder rows can carry the Claude star
+- in `Full`, sending flies the composer's send control: the icon leaves up and to the right, a ring opens and a
+  check lands in the accent, then the control returns
+- the model menu splits like Claude's: the current provider's models come first under a **Main models** bar,
+  everything else follows under **More models** with a hairline rule, and the checked row takes an accent wash
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -151,11 +155,14 @@ dsh plugin --profile desktop add C:\path\to\claude-style-deepseek
 - **Claude palette** retracts the token layer, leaving your current theme's colors.
 - **Claude transcript** drops the stylesheet and the thinking-window engine, leaving
   the shipped chat untouched.
-- **Thinking animation** drives the window and the breathing running mark. It is on by
-  default and deliberately does **not** follow the system's reduced-motion query: the
-  desktop app reports reduced motion on Windows with animation effects turned off, and
-  a theme whose whole point is this window would otherwise stand still. Switch it off
-  here for a still transcript.
+- **Thinking animation** is a two-way choice, not a switch:
+  - `RDP` keeps the transcript still and instant for high-latency remote sessions:
+    no stepping, no breathing mark, no send flight, no transitions.
+  - `Full` is the rich profile: the breathing running mark, the stepping window and
+    the send flight. It deliberately does **not** follow the system's reduced-motion
+    query, because the desktop app reports reduced motion on Windows with animation
+    effects off and this skin would otherwise never animate. Pick `RDP` here for a
+    still transcript.
 - **Conversation font** is optional, and off by default: `Default` keeps the harness
   face (Thmanyah Sans in current builds), `Serif` sets the transcript in a reading
   serif, `Mono` sets the transcript and the composer in the terminal face. Code blocks
@@ -192,7 +199,7 @@ module:
 
 The reading measure is `--dsh-chat-user-width` (`min(820px, 100%)`). Raise the ceiling
 and the window only appears on longer thoughts; lower it and it starts stepping
-sooner.
+sooner. The window steps only in the `Full` animation profile.
 
 ## How it works
 
@@ -215,6 +222,9 @@ sooner.
   custom text or masked star is drawn over it, so an emptied field restores the
   original without moving any node. Only the new-session words are rewritten in place,
   with their originals remembered and put back, and only while a custom label is set.
+- The model split writes group attributes and moves the current provider's group to the
+  front of the pane, so the reader's order and the host's arrow-key walk agree. Nothing
+  is hidden, re-parented or re-bound; the host still owns every click.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
 

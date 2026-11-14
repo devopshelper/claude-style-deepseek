@@ -50,7 +50,7 @@ window.__ModuleLoader__.load({
     const DEFAULT_PREFS = {
       colors: true,
       flow: true,
-      motion: true,
+      motion: 'full',
       typeface: 'default',
       brand: '',
       newSession: '',
@@ -65,6 +65,7 @@ window.__ModuleLoader__.load({
     const BRAND_ATTR = 'data-cc-brand';
     const BRAND_MARK_ATTR = 'data-cc-brand-mark';
     const FOLDER_ATTR = 'data-cc-folder';
+    const SEND_ATTR = 'data-cc-sending';
     const BRAND_TEXT_PROPERTY = '--cc-brand-text';
 
     /* A twelve-ray mark, drawn in code rather than shipped as a file: the
@@ -90,6 +91,9 @@ window.__ModuleLoader__.load({
 
     const CLAUDE_MARK_URI = 'data:image/svg+xml,' + encodeURIComponent(rayMark());
     const FOLDER_MARK_URI = 'data:image/svg+xml,' + encodeURIComponent(FOLDER_MARK_SVG);
+    const CHECK_MARK_URI = 'data:image/svg+xml,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    );
 
     /**
      * The stylesheet. Every transcript rule is scoped to `body[data-cc-flow]`,
@@ -132,7 +136,8 @@ window.__ModuleLoader__.load({
            derives its content width from this variable, so the composer and
            every Markdown table follow it. */
         '--dsh-chat-user-width:min(820px,100%);' +
-        '--dsh-chat-flow-gap:6px}' +
+        '--dsh-chat-flow-gap:6px;' +
+        '--cc-check:url("' + CHECK_MARK_URI + '")}' +
 
       /* ---- conversation font ---------------------------------------------
          Off by default: the shipped font stands until the reader picks one.
@@ -199,6 +204,29 @@ window.__ModuleLoader__.load({
          it is still receiving while the step glides over it. */
       'body[data-cc-flow] [data-cc-reason-window][data-cc-reason-capped] [data-cc-reason-text]{animation:cc-reason-settle .4s ease-out both}' +
       '@keyframes cc-reason-settle{from{opacity:.55}to{opacity:1}}' +
+
+      /* ---- the send flight ------------------------------------------------
+         Full profile only. The control pops, its icon leaves up and to the
+         right, a ring opens, and a check lands in the accent, the way a chat
+         app acknowledges a send. The engine marks the button for exactly one
+         flight; RDP never gets here, so a remote session pays nothing. */
+      '@keyframes cc-send-pop{0%{transform:scale(1)}35%{transform:scale(.86)}70%{transform:scale(1.08)}100%{transform:scale(1)}}' +
+      '@keyframes cc-send-plane{0%{transform:none;opacity:1}40%{transform:translate(9px,-11px) rotate(18deg) scale(.7);opacity:0}100%{transform:translate(13px,-15px) rotate(24deg) scale(.6);opacity:0}}' +
+      '@keyframes cc-send-ring{0%{transform:scale(.55);opacity:.6}100%{transform:scale(1.85);opacity:0}}' +
+      '@keyframes cc-send-check{0%{transform:scale(.3);opacity:0}45%{transform:scale(1.12);opacity:1}72%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}' +
+      'body[data-cc-motion=full] [data-cc-sending]{position:relative;animation:cc-send-pop .5s ease}' +
+      'body[data-cc-motion=full] [data-cc-sending] svg{animation:cc-send-plane .55s cubic-bezier(.3,.7,.4,1) forwards}' +
+      'body[data-cc-motion=full] [data-cc-sending]::before{content:"";position:absolute;inset:-5px;border-radius:999px;border:1.5px solid var(--cc-accent,#d97757);animation:cc-send-ring .6s ease-out;pointer-events:none}' +
+      'body[data-cc-motion=full] [data-cc-sending]::after{content:"";position:absolute;inset:0;border-radius:999px;background-color:var(--cc-accent,#d97757);-webkit-mask:var(--cc-check) center/46% no-repeat;mask:var(--cc-check) center/46% no-repeat;animation:cc-send-check .6s .16s both;pointer-events:none}' +
+
+      /* ---- the model list, split the way Claude lists models -------------
+         The pane groups models by provider. The group holding the selected
+         model is the main bar; the other groups follow under a "More models"
+         bar with a hairline rule. The host keeps DOM order and its own
+         keyboard walk, so this is paint only: nothing is hidden or moved. */
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] section[data-menu-group][data-cc-model-label]::before{content:attr(data-cc-model-label);display:block;padding:3px 6px 5px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-caption)}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] section[data-cc-model-group=secondary]{margin-top:4px;padding-top:4px;border-top:.5px solid var(--dsw-alias-border-l2)}' +
+      'body[data-cc-flow] [role="menu"][aria-label="Model"] button[role="menuitemradio"][aria-checked=true]{background:var(--dsw-alias-interactive-bg-hover-accent);border-radius:8px}' +
 
       /* ---- tool calls ----------------------------------------------------
          One line per call: a bullet, the localized tool title, then the
@@ -395,8 +423,10 @@ window.__ModuleLoader__.load({
       'settings.colors.description': 'Warm charcoal in dark, warm paper in light, with the Claude accent on links, primary actions and the running status.',
       'settings.flow.title': 'Claude transcript',
       'settings.flow.description': 'Prompt blocks, a thinking window that steps live reasoning two lines at a time, one-line tool rows and indented step summaries.',
-      'settings.motion.title': 'Thinking animation',
-      'settings.motion.description': 'Steps the live thinking window two lines at a time and breathes the running mark. Runs even when the system asks for reduced motion; switch it off here for a still transcript.',
+      'settings.motion.title': 'Animation',
+      'settings.motion.description': 'RDP keeps the transcript still and instant for high-latency remote sessions. Full adds the breathing running mark, the stepping window and the send flight.',
+      'settings.motion.lite': 'RDP',
+      'settings.motion.full': 'Full',
       'settings.typeface.title': 'Conversation font',
       'settings.typeface.description': 'Leave the harness font alone, or set the transcript in a reading serif or a terminal monospace. Code keeps its own monospace either way.',
       'settings.typeface.default': 'Default',
@@ -416,7 +446,9 @@ window.__ModuleLoader__.load({
       'settings.folder.description': 'The folder glyph on workspace rows. Claude nests its star inside the folder.',
       'settings.folder.default': 'Default',
       'settings.folder.claude': 'Claude',
-      'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 400px ceiling.',
+      'menu.main': 'Main models',
+      'menu.more': 'More models',
+      'settings.hint': 'Step summaries use the built-in Work details setting: Settings -> General -> Work details. Compact, Standard and Detailed collapse finished steps into one expandable line; Verbose keeps every row open. A thinking block opens while it streams and folds when it settles; open or close one yourself and the plugin leaves it alone. The window only steps once a thought outgrows its 240px ceiling.',
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
       'settings.off': 'Off',
@@ -432,8 +464,10 @@ window.__ModuleLoader__.load({
       'settings.colors.description': '深色下是暖炭黑，浅色下是暖纸色，链接、主要按钮与运行状态使用 Claude 的橙色。',
       'settings.flow.title': 'Claude 会话排版',
       'settings.flow.description': '提示块、正在流式输出时按两行步进的思考窗口、单行工具行与缩进的步骤摘要。',
-      'settings.motion.title': '思考动画',
-      'settings.motion.description': '让正在输出的思考窗口按两行步进，并让运行中的标记呼吸。即使系统要求减少动态效果也照常运行；想完全静止就在这里关掉。',
+      'settings.motion.title': '动画',
+      'settings.motion.description': 'RDP 面向高延迟远程会话：不播放动画，转录保持静止。完整模式保留运行标记呼吸、思考窗口步进和发送动画。',
+      'settings.motion.lite': 'RDP',
+      'settings.motion.full': '完整',
       'settings.typeface.title': '会话字体',
       'settings.typeface.description': '保持 Harness 自带的字体，或把对话换成阅读用的衬线体、终端用的等宽体。两种模式下代码块都保持等宽。',
       'settings.typeface.default': '默认',
@@ -453,6 +487,8 @@ window.__ModuleLoader__.load({
       'settings.folder.description': '工作区行上的文件夹图形。Claude 会在文件夹里嵌一颗星。',
       'settings.folder.default': '默认',
       'settings.folder.claude': 'Claude',
+      'menu.main': '主要模型',
+      'menu.more': '更多模型',
       'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
@@ -476,10 +512,11 @@ window.__ModuleLoader__.load({
             const typeface = parsed.typeface === 'serif' || parsed.typeface === 'mono' ? parsed.typeface : 'default';
             const brandMark = parsed.brandMark === 'claude' ? 'claude' : 'default';
             const folderIcon = parsed.folderIcon === 'claude' ? 'claude' : 'default';
+            const motion = parsed.motion === false || parsed.motion === 'lite' ? 'lite' : 'full';
             return {
               colors: parsed.colors !== false,
               flow: parsed.flow !== false,
-              motion: parsed.motion !== false,
+              motion,
               typeface,
               brand: text(parsed.brand, 24),
               newSession: text(parsed.newSession, 24),
@@ -513,7 +550,7 @@ window.__ModuleLoader__.load({
           JSON.stringify({
             colors: prefs.colors === true,
             flow: prefs.flow === true,
-            motion: prefs.motion === true,
+            motion: prefs.motion === 'lite' ? 'lite' : 'full',
             typeface,
             brand: text(prefs.brand, 24),
             newSession: text(prefs.newSession, 24),
@@ -843,6 +880,113 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /* ------------------------------------------------------------------ *
+     * The send flight.
+     *
+     * The composer's send control is the last button in its card. A press is a
+     * send only while the field still holds text (the host clears it as the
+     * message is taken), which tells a send from a stop press without reading
+     * a localized label. The mark lives for one flight, then comes off.
+     * ------------------------------------------------------------------ */
+    function createSendFlight() {
+      let timer = 0;
+
+      const onPress = (event) => {
+        if (typeof document === 'undefined' || document.body === null) return;
+        if (document.body.getAttribute(MOTION_ATTR) !== 'full') return;
+        const target = event.target;
+        if (target === null || target === undefined || typeof target.closest !== 'function') return;
+        const button = target.closest('[data-composer-card] button');
+        if (button === null) return;
+        const card = button.closest('[data-composer-card]');
+        if (card === null) return;
+        const buttons = card.querySelectorAll('button');
+        if (buttons[buttons.length - 1] !== button) return;
+        const input = card.querySelector('[data-composer-input]');
+        if (input === null || input.textContent.trim() === '') return;
+
+        /* A second send restarts the flight rather than reusing a finished one. */
+        button.removeAttribute(SEND_ATTR);
+        void button.offsetWidth;
+        button.setAttribute(SEND_ATTR, '');
+        if (timer !== 0) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          timer = 0;
+          button.removeAttribute(SEND_ATTR);
+        }, 900);
+      };
+
+      document.addEventListener('pointerup', onPress, true);
+      return () => {
+        document.removeEventListener('pointerup', onPress, true);
+        if (timer !== 0) {
+          window.clearTimeout(timer);
+          timer = 0;
+        }
+      };
+    }
+
+    /* ------------------------------------------------------------------ *
+     * The model list split.
+     *
+     * The host's model pane groups models by provider. The group that holds
+     * the selected model is the main bar; every other group is the secondary
+     * list, introduced once by a "More models" bar. Only attributes are
+     * written, so the host's own ordering, focus walk and click handling stay
+     * exactly as shipped.
+     * ------------------------------------------------------------------ */
+    function createModelSplit(label) {
+      let observer = null;
+      let frame = 0;
+
+      const apply = () => {
+        frame = 0;
+        if (typeof document === 'undefined') return;
+        const pane = document.querySelector('[role="menu"][aria-label="Model"]');
+        if (pane === null) return;
+        const groups = [...pane.querySelectorAll(':scope > section[data-menu-group]')];
+        if (groups.length < 2) return;
+
+        const checked = pane.querySelector('[role="menuitemradio"][aria-checked="true"]');
+        const primary = checked === null ? groups[0] : checked.closest('section[data-menu-group]') ?? groups[0];
+        let moreLabeled = false;
+
+        /* The main group goes first in the document, not just on screen, so
+           the host's own arrow-key walk stays in the order the reader sees. */
+        if (primary !== pane.firstElementChild) pane.insertBefore(primary, pane.firstElementChild);
+
+        for (const group of groups) {
+          const isPrimary = group === primary;
+          group.setAttribute('data-cc-model-group', isPrimary ? 'primary' : 'secondary');
+          if (isPrimary) {
+            group.setAttribute('data-cc-model-label', label('menu.main'));
+          } else if (!moreLabeled) {
+            group.setAttribute('data-cc-model-label', label('menu.more'));
+            moreLabeled = true;
+          } else {
+            group.removeAttribute('data-cc-model-label');
+          }
+        }
+      };
+
+      const schedule = () => {
+        if (frame !== 0) return;
+        frame = window.requestAnimationFrame(apply);
+      };
+
+      observer = new MutationObserver(schedule);
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      return () => {
+        observer.disconnect();
+        observer = null;
+        if (frame !== 0) {
+          window.cancelAnimationFrame(frame);
+          frame = 0;
+        }
+      };
+    }
+
     /** One text row: a field that commits on blur or Enter, so typing does not repaint the transcript per keystroke. */
     function TextRow({ description, label, placeholder, value, onCommit }) {
       return h(
@@ -1072,10 +1216,14 @@ window.__ModuleLoader__.load({
             label: t('settings.flow.title'),
             onChange: (value) => update('flow', value),
           }),
-          h(SwitchRow, {
-            checked: prefs.motion,
+          h(ChoiceRow, {
             description: t('settings.motion.description'),
             label: t('settings.motion.title'),
+            value: prefs.motion,
+            options: [
+              { value: 'lite', label: t('settings.motion.lite') },
+              { value: 'full', label: t('settings.motion.full') },
+            ],
             onChange: (value) => update('motion', value),
           }),
           h(ChoiceRow, {
@@ -1174,6 +1322,14 @@ window.__ModuleLoader__.load({
       /* ---- palette layer, flow attribute, thinking window ----------------- */
       const reasonWindow = createReasonWindow();
       const labels = createLabelSwap();
+      const stopSendFlight = createSendFlight();
+      const stopModelSplit = createModelSplit((key) => {
+        try {
+          return ctx.locale.bind(NS)(key);
+        } catch (error) {
+          return key;
+        }
+      });
 
       ctx.effect(() => {
         let paletteLayer = null;
@@ -1185,7 +1341,7 @@ window.__ModuleLoader__.load({
           if (body === null) return;
           body.toggleAttribute(FLOW_ATTR, prefs.flow);
           body.toggleAttribute(COLORS_ATTR, prefs.colors);
-          body.setAttribute(MOTION_ATTR, prefs.motion && prefs.flow ? 'full' : 'off');
+          body.setAttribute(MOTION_ATTR, prefs.flow ? (prefs.motion === 'lite' ? 'lite' : 'full') : 'off');
           body.setAttribute(TYPEFACE_ATTR, prefs.typeface);
           body.setAttribute(BRAND_MARK_ATTR, prefs.brandMark);
           body.setAttribute(FOLDER_ATTR, prefs.folderIcon);
@@ -1234,6 +1390,8 @@ window.__ModuleLoader__.load({
           window.removeEventListener('storage', onStorage);
           reasonWindow.stop();
           labels.stop();
+          stopSendFlight();
+          stopModelSplit();
           if (paletteLayer !== null) paletteLayer();
           if (typeof document !== 'undefined' && document.body !== null) {
             document.body.removeAttribute(FLOW_ATTR);
