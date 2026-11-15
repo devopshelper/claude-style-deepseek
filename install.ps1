@@ -220,6 +220,9 @@ function Select-Bundle {
         if ($newInner.Contains($quoted)) {
             $newInner = [regex]::Replace($newInner, [regex]::Escape($quoted) + '\s*,', '')
         }
+        if ($newInner.Contains($quoted)) {
+            $newInner = [regex]::Replace($newInner, '\s*' + [regex]::Escape($quoted) + '\s*', '')
+        }
         $newText = $text.Substring(0, $match.Index) + $match.Groups[1].Value + $newInner + $match.Groups[3].Value + $text.Substring($match.Index + $match.Length)
         Set-Content -LiteralPath $PackageJson -Value $newText -NoNewline
         return $true

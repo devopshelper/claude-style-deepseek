@@ -226,24 +226,24 @@ window.__ModuleLoader__.load({
          puts every other provider behind one "More models" row, which opens
          the secondary screen with a back row. The engine marks the groups and
          inserts the two rows; the host still renders every model row. */
-      'body[data-cc-flow] [role="menu"][aria-label="Model"]>section[data-cc-model-group=primary][data-cc-model-label]::before{content:attr(data-cc-model-label);display:block;padding:3px 6px 5px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-caption)}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=main]>section[data-cc-model-group=secondary]{display:none}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=more]>section[data-cc-model-group=primary]{display:none}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=more]>[data-cc-model-more]{display:none}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"][data-cc-view=main]>[data-cc-model-back]{display:none}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more],' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin:2px 0;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more]:hover,' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-more]::after{content:"\\203A";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] [data-cc-model-back]::before{content:"\\2039";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"] button[role="menuitemradio"][aria-checked=true]{background:var(--dsw-alias-interactive-bg-hover-accent);border-radius:8px}' +
+      'body[data-cc-flow] [data-cc-model-menu]>section[data-cc-model-group=primary][data-cc-model-label]::before{content:attr(data-cc-model-label);display:block;padding:3px 6px 5px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-caption)}' +
+      'body[data-cc-flow] [data-cc-model-menu][data-cc-view=main]>section[data-cc-model-group=secondary]{display:none}' +
+      'body[data-cc-flow] [data-cc-model-menu][data-cc-view=more]>section[data-cc-model-group=primary]{display:none}' +
+      'body[data-cc-flow] [data-cc-model-menu][data-cc-view=more]>[data-cc-model-more]{display:none}' +
+      'body[data-cc-flow] [data-cc-model-menu][data-cc-view=main]>[data-cc-model-back]{display:none}' +
+      'body[data-cc-flow] [data-cc-model-menu] [data-cc-model-more],' +
+      'body[data-cc-flow] [data-cc-model-menu] [data-cc-model-back]{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin:2px 0;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer}' +
+      'body[data-cc-flow] [data-cc-model-menu] [data-cc-model-more]:hover,' +
+      'body[data-cc-flow] [data-cc-model-menu] [data-cc-model-back]:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
+      'body[data-cc-flow] [data-cc-model-menu] [data-cc-model-more]::after{content:"\\203A";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
+      'body[data-cc-flow] [data-cc-model-menu] [data-cc-model-back]::before{content:"\\2039";color:var(--dsw-alias-label-tertiary);font-size:15px;line-height:1}' +
+      'body[data-cc-flow] [data-cc-model-menu] button[role="menuitemradio"][aria-checked=true]{background:var(--dsw-alias-interactive-bg-hover-accent);border-radius:8px}' +
       /* A flat list, the way Claude lists models: the provider heading of the
          group in use is redundant beside its own tab, and the secondary screen
          keeps its headings because it really is several providers. */
-      'body[data-cc-flow] [role="menu"][aria-label="Model"]>section[data-cc-model-group=primary] [data-menu-group-heading]{display:none}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Model"]>section[data-cc-model-group=primary]{padding-top:0}' +
-      'body[data-cc-flow] [role="menu"][aria-label="Effort"] [data-cc-effort-note]{padding:2px 8px 8px;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.45}' +
+      'body[data-cc-flow] [data-cc-model-menu]>section[data-cc-model-group=primary] [data-menu-group-heading]{display:none}' +
+      'body[data-cc-flow] [data-cc-model-menu]>section[data-cc-model-group=primary]{padding-top:0}' +
+      'body[data-cc-flow] [data-cc-effort-note]{padding:4px 10px 8px;color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.45}' +
 
       /* ---- tool calls ----------------------------------------------------
          One line per call: a bullet, the localized tool title, then the
@@ -570,7 +570,7 @@ window.__ModuleLoader__.load({
       'settings.compact.live': '已应用到运行中的引擎。',
       'settings.compact.restart': '已保存。重启 DeepSeek Harness 后生效。',
       'context.hint': '自动压缩阈值在 Claude 风格设置里调整。',
-      'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 400px 的上限后窗口才开始步进。',
+      'settings.hint': '步骤摘要沿用内置的“工作详情”设置：设置 -> 通用 -> 工作详情。紧凑、标准与详细会把已完成的步骤折叠成一行；详细输出会保持每个步骤展开。思考块在流式输出时自动展开、结束后自动折叠；你手动开关过的思考块不会再被改动。思考内容超过 240px 的上限后窗口才开始步进。',
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
       'settings.off': '关',
@@ -972,6 +972,18 @@ window.__ModuleLoader__.load({
     function createSendFlight() {
       let timer = 0;
 
+      const trigger = (button) => {
+        /* A second send restarts the flight rather than reusing a finished one. */
+        button.removeAttribute(SEND_ATTR);
+        void button.offsetWidth;
+        button.setAttribute(SEND_ATTR, '');
+        if (timer !== 0) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          timer = 0;
+          button.removeAttribute(SEND_ATTR);
+        }, 900);
+      };
+
       const onPress = (event) => {
         if (typeof document === 'undefined' || document.body === null) return;
         if (document.body.getAttribute(MOTION_ATTR) !== 'full') return;
@@ -985,21 +997,29 @@ window.__ModuleLoader__.load({
         if (buttons[buttons.length - 1] !== button) return;
         const input = card.querySelector('[data-composer-input]');
         if (input === null || input.textContent.trim() === '') return;
+        trigger(button);
+      };
 
-        /* A second send restarts the flight rather than reusing a finished one. */
-        button.removeAttribute(SEND_ATTR);
-        void button.offsetWidth;
-        button.setAttribute(SEND_ATTR, '');
-        if (timer !== 0) window.clearTimeout(timer);
-        timer = window.setTimeout(() => {
-          timer = 0;
-          button.removeAttribute(SEND_ATTR);
-        }, 900);
+      const onKeyDown = (event) => {
+        if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+        if (typeof document === 'undefined' || document.body === null) return;
+        if (document.body.getAttribute(MOTION_ATTR) !== 'full') return;
+        const target = event.target;
+        if (target === null || target === undefined || typeof target.closest !== 'function') return;
+        const input = target.closest('[data-composer-card] [data-composer-input]');
+        if (input === null || input.textContent.trim() === '') return;
+        const card = input.closest('[data-composer-card]');
+        if (card === null) return;
+        const buttons = card.querySelectorAll('button');
+        if (buttons.length === 0) return;
+        trigger(buttons[buttons.length - 1]);
       };
 
       document.addEventListener('pointerup', onPress, true);
+      document.addEventListener('keydown', onKeyDown, true);
       return () => {
         document.removeEventListener('pointerup', onPress, true);
+        document.removeEventListener('keydown', onKeyDown, true);
         if (timer !== 0) {
           window.clearTimeout(timer);
           timer = 0;
@@ -1048,17 +1068,27 @@ window.__ModuleLoader__.load({
         if (typeof document === 'undefined') return;
 
         /* The effort screen gets one line of its own copy above the levels:
-           the host names the levels, not what choosing one costs. */
-        const effort = document.querySelector('[role="menu"][aria-label="Effort"]');
-        if (effort !== null && effort.querySelector(':scope > [data-cc-effort-note]') === null) {
-          const note = document.createElement('div');
-          note.setAttribute('data-cc-effort-note', '');
-          note.textContent = label('effort.note');
-          effort.insertBefore(note, effort.firstElementChild);
+           the host names the levels, not what choosing one costs.
+           In DSH, the effort sub-menu contains role="menuitemradio" buttons
+           without section[data-menu-group]. */
+        const radios = document.querySelectorAll('button[role="menuitemradio"]');
+        if (radios.length > 0 && document.querySelector('section[data-menu-group]') === null) {
+          const effortContainer = radios[0].closest('[role="menu"]') ?? radios[0].parentElement;
+          if (effortContainer !== null && effortContainer.querySelector('[data-cc-effort-note]') === null) {
+            const note = document.createElement('div');
+            note.setAttribute('data-cc-effort-note', '');
+            note.textContent = label('effort.note');
+            effortContainer.insertBefore(note, effortContainer.firstElementChild);
+          }
         }
 
-        const pane = document.querySelector('[role="menu"][aria-label="Model"]');
+        /* The model pane contains section[data-menu-group]. Target it structurally
+           so this works in any UI language (en, zh, ja, etc.). */
+        const group = document.querySelector('section[data-menu-group]');
+        const pane = group === null ? null : (group.closest('[role="menu"]') ?? group.parentElement);
         if (pane === null) return;
+        pane.setAttribute('data-cc-model-menu', '');
+
         const groups = [...pane.querySelectorAll(':scope > section[data-menu-group]')];
         if (groups.length < 2) return;
 
@@ -1083,7 +1113,7 @@ window.__ModuleLoader__.load({
         if (target === null || target === undefined || typeof target.closest !== 'function') return;
         const row = target.closest('[data-cc-model-more], [data-cc-model-back]');
         if (row === null) return;
-        const pane = row.closest('[role="menu"][aria-label="Model"]');
+        const pane = row.closest('[data-cc-model-menu]') ?? row.closest('[role="menu"]');
         if (pane === null) return;
 
         event.preventDefault();
@@ -1135,8 +1165,8 @@ window.__ModuleLoader__.load({
      */
     function ContextPanel(props) {
       const t = props.t;
-      const pressure = props.useProjection('contextPressure');
-      const breakdown = props.useProjection('contextBreakdown');
+      const pressure = typeof props.useProjection === 'function' ? props.useProjection('contextPressure') : undefined;
+      const breakdown = typeof props.useProjection === 'function' ? props.useProjection('contextBreakdown') : undefined;
 
       const used = pressure === undefined ? undefined : (pressure.projectedTokens ?? pressure.pressureTokens);
       const capacity = pressure === undefined ? undefined : pressure.contextWindow;
@@ -1384,7 +1414,7 @@ window.__ModuleLoader__.load({
         return h(
           'div',
           { className: 'cc-set-group' },
-          h(SwitchRow, { checked: false, label: t('settings.compact.title'), description: error, onChange: () => {} }),
+          h(SwitchRow, { checked: false, disabled: true, label: t('settings.compact.title'), description: error, onChange: () => {} }),
         );
       }
 
@@ -1420,7 +1450,7 @@ window.__ModuleLoader__.load({
     }
 
     /** One switch row: label + description on the left, the control right. */
-    function SwitchRow({ checked, description, label, onChange }) {
+    function SwitchRow({ checked, description, disabled, label, onChange }) {
       return h(
         'div',
         { className: 'cc-set-row' },
@@ -1434,9 +1464,12 @@ window.__ModuleLoader__.load({
           type: 'button',
           role: 'switch',
           'aria-checked': checked,
+          'aria-disabled': disabled === true ? 'true' : undefined,
+          disabled: disabled === true,
           'aria-label': label,
           className: 'cc-set-switch',
-          onClick: () => onChange(!checked),
+          style: disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined,
+          onClick: disabled ? undefined : () => onChange(!checked),
         }),
       );
     }
