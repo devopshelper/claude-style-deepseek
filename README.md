@@ -54,6 +54,8 @@ In the transcript:
   the checked row takes an accent wash, and the **Effort** screen opens with one line on what higher effort costs
 - a **Context** tab in the right sidebar: percent and tokens used, a bar split into messages, tools and system
   prompt, plus free space and any unaccounted remainder, read from the token meter's own projections
+- **`/stats`** prints the whole Session: cumulative tokens by bucket, context occupancy, turn and step
+  counts, model and tool time, in a card that stays open until you fold it
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -239,6 +241,48 @@ Claude's context panel does:
 It reads the `contextPressure` and `contextBreakdown` client projections, so it agrees
 with the meter and stays live during a turn. Nothing is scraped from the host's DOM.
 
+## Session stats: `/stats`
+
+Type `/stats` in the composer. The command runs on the Host, reads the live Session, and
+settles one report in the transcript. Nothing is sent to the model.
+
+```text
+Session usage
+Model        deepseek-account/deepseek-flash
+Duration     1h 0m
+Turns        12
+Steps        38
+
+Tokens       1,073,412
+Input          123,456
+Output          45,678
+Cache read     890,123
+Cache write     14,155
+
+Context       131,021 / 1,048,576 (12.5%)
+Model time    8m 2s
+Tool time     1m 31s
+```
+
+- **Tokens** is the whole Session: every provider call adds its uncached input, output,
+  cache read and cache write. `Tokens` is the sum of the four rows under it.
+- **Context** is the same occupancy the composer meter shows, as a share of the routed
+  model's window.
+- **Turns** and **Steps** count closed steps out of the complete durable log, so
+  compaction and paging never change them.
+- **Model time** and **Tool time** are the summed wall times for model calls and tool
+  pairs.
+
+The report arrives in an open card: the header folds it to one row and back. The card
+renders the text the command settled rather than re-measuring, so a row read back later
+still shows the Session it described.
+
+Everything comes from projections the Host already folds (`tokenUsage`,
+`contextPressure`, `sessionStats`), so `/stats` cannot drift from the meter, the Context
+tab, or the session list. A Host without a command registry has no `/stats` and drops no
+other part of the skin; a Host without the projection registry answers with one error
+line instead of a wrong number.
+
 ## Tuning
 
 The thinking window reads its numbers from CSS custom properties on
@@ -284,6 +328,11 @@ sooner. The window steps only in the `Full` animation profile.
   renders every model row and owns every choice; nothing is re-parented or re-bound.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
+- `/stats` is a Host command registered through `ctx.inject(['commands'])`, so it exists
+  in every UI adapter that mounts a command registry and in none that does not. It reads
+  one projection snapshot and prints it; the Client half only takes over the row through
+  the `conversation.chat.commandview` slot, keyed by the command name, so an uninstalled
+  Client half still leaves a working text report.
 
 ## Compatibility
 

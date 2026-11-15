@@ -333,6 +333,19 @@ window.__ModuleLoader__.load({
       '.cc-set-input:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px;border-color:transparent}' +
       '.cc-set-hint{margin:0;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:11px}' +
       '.cc-set-hint code{font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:11px;padding:0 3px;border-radius:3px;background:var(--dsw-alias-markdown-inline-code)}' +
+
+      /* ---- the /stats card ------------------------------------------------
+         The command settles one text report; this card is that report, not a
+         second measurement. It stays open so the figures are readable without
+         a click, and folds back to one row when the reader wants it gone. */
+      '.cc-stats{margin:6px 0;border:.5px solid var(--dsw-alias-border-l2);border-radius:10px;overflow:hidden;background:var(--dsw-alias-bg-layer-2)}' +
+      '.cc-stats-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:6px 12px;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer}' +
+      '.cc-stats-toggle:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
+      '.cc-stats-toggle:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}' +
+      '.cc-stats-title{font-weight:600}' +
+      '.cc-stats-hint{flex:none;color:var(--dsw-alias-label-caption);font-size:11px}' +
+      '.cc-stats-body{margin:0;padding:0 12px 10px;color:var(--dsw-alias-label-secondary);font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:12px;line-height:1.6;white-space:pre;overflow-x:auto}' +
+      '.cc-stats-body[data-error]{color:var(--dsw-alias-state-error-primary)}' +
       '@media (prefers-reduced-motion:reduce){.cc-set-switch,.cc-set-switch::after,.cc-set-option{transition:none}}';
 
     /**
@@ -513,6 +526,11 @@ window.__ModuleLoader__.load({
       'settings.motionHint': 'Windows with animation effects off report reduced motion, which is why this switch is the plugin\'s own rather than the system\'s.',
       'settings.on': 'On',
       'settings.off': 'Off',
+      'stats.title': 'Session usage',
+      'stats.show': 'Show',
+      'stats.hide': 'Hide',
+      'stats.running': 'Reading session usage',
+      'stats.failed': 'Session usage failed',
       'label.title': 'Claude Style',
     };
 
@@ -574,6 +592,11 @@ window.__ModuleLoader__.load({
       'settings.motionHint': '关闭了 Windows 动画效果的系统会报告“减少动态效果”，所以这里用插件自己的开关，而不跟随系统。',
       'settings.on': '开',
       'settings.off': '关',
+      'stats.title': '会话用量',
+      'stats.show': '展开',
+      'stats.hide': '收起',
+      'stats.running': '正在读取会话用量',
+      'stats.failed': '会话用量读取失败',
       'label.title': 'Claude 风格',
     };
 
@@ -1227,6 +1250,55 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /* The first line the Host report opens with is the card's own header. */
+    const STATS_TITLE_LINE = 'Session usage';
+
+    /**
+     * The `/stats` row.
+     *
+     * The Host command settles one text report and this card renders exactly
+     * that text, so a row read months later still shows the Session it
+     * described instead of re-measuring today's. The report's opening title
+     * line becomes the card header, so it is never printed twice.
+     */
+    function StatsCard(props) {
+      const t = typeof props.t === 'function' ? props.t : (key) => key;
+      const node = props.node;
+      const outcome = node === null || node === undefined ? null : node.outcome;
+      const text = outcome !== null && typeof outcome.text === 'string' ? outcome.text : '';
+      const running = outcome === null;
+      const failed = outcome !== null && outcome.kind === 'error';
+      const [open, setOpen] = React.useState(true);
+
+      const lines = text.split('\n');
+      const body = lines.length > 1 && lines[0].trim() === STATS_TITLE_LINE
+        ? lines.slice(1).join('\n').trim()
+        : text.trim();
+      const title = running ? t('stats.running') : (failed ? t('stats.failed') : t('stats.title'));
+
+      return h(
+        'div',
+        { className: 'cc-stats' },
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'cc-stats-toggle',
+            'aria-expanded': body !== '' && open,
+            'aria-label': title,
+            onClick: () => setOpen(!open),
+          },
+          h('span', { className: 'cc-stats-title' }, title),
+          body === ''
+            ? null
+            : h('span', { className: 'cc-stats-hint' }, open ? t('stats.hide') : t('stats.show')),
+        ),
+        body !== '' && open
+          ? h('pre', { className: 'cc-stats-body', 'data-error': failed ? '' : undefined }, body)
+          : null,
+      );
+    }
+
     /** One text row: a field that commits on blur or Enter, so typing does not repaint the transcript per keystroke. */
     function TextRow({ description, label, placeholder, value, onCommit }) {
       return h(
@@ -1675,6 +1747,27 @@ window.__ModuleLoader__.load({
             if (disposeType !== null) disposeType();
           };
         }, 'claude-flow: context tab');
+      }
+
+      /* ---- the /stats card in the transcript ------------------------------
+         The slot is dispatched by command name, so this replaces the generic
+         command row only for `stats`. `slots.inject` waits for the Chat
+         surface to declare the slot; a Host without it keeps the plain
+         report the command already settled. */
+      try {
+        ctx.effect(
+          () => ctx.slots.inject('conversation.chat.commandview', () =>
+            ctx.slots.register(
+              { name: 'conversation.chat.commandview', key: 'stats' },
+              (props) => h(StatsCard, Object.assign({}, props, {
+                t: typeof props.t === 'function' ? props.t : label,
+              })),
+            ),
+          ),
+          'claude-flow: stats card',
+        );
+      } catch (error) {
+        /* a host without the chat command slot keeps the plain report */
       }
 
       /* ---- palette layer, flow attribute, thinking window ----------------- */

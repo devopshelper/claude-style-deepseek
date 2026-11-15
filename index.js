@@ -2,15 +2,21 @@
  * Host half of the Claude Style bundle.
  *
  * The bundle paints the existing Client surfaces, so nothing here is
- * model-facing. It owns one thing: the profile's auto-compaction threshold.
- * The Web page reads and writes it through one same-origin route
- * (`/claude-style/auto-compact`), because a page cannot touch the loader
- * config directly and the desktop page has no other channel to the Host.
+ * model-facing. It owns two things.
  *
- * The value lives where the loader already reads it: a marked entry in the
- * profile's `cordis.patch.yml`. Writing that entry keeps the choice durable
- * across restarts; when the compaction service exposes a mutable config, the
- * new ratio is also applied to the running engine so the change is immediate.
+ * 1. The profile's auto-compaction threshold. The Web page reads and writes it
+ *    through one same-origin route (`/claude-style/auto-compact`), because a
+ *    page cannot touch the loader config directly and the desktop page has no
+ *    other channel to the Host. The value lives where the loader already reads
+ *    it: a marked entry in the profile's `cordis.patch.yml`. Writing that entry
+ *    keeps the choice durable across restarts; when the compaction service
+ *    exposes a mutable config, the new ratio is also applied to the running
+ *    engine so the change is immediate.
+ *
+ * 2. The `/stats` command. It is a human command: the handler reads the live
+ *    Session and its projections and returns one text report, so nothing is
+ *    sent to the model. The report is the durable record the transcript keeps;
+ *    the Client half renders the same text as a card.
  */
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -125,12 +131,190 @@ function readBody(req) {
   })
 }
 
+/* ------------------------------------------------------------------------- *
+ * `/stats`
+ *
+ * One human command that reports the whole Session: cumulative provider
+ * tokens, current context occupancy, turn and step counts, and wall times.
+ * Every figure comes from the projections the Host already folds over the
+ * durable log (`tokenUsage`, `contextPressure`, `sessionStats`), so the report
+ * cannot drift from the numbers the composer meter shows and nothing here
+ * re-implements a fold.
+ *
+ * The command is registered through `ctx.inject(['commands'])`: a Host
+ * without a command registry simply has no `/stats`, and the rest of the
+ * bundle keeps working.
+ * ------------------------------------------------------------------------- */
+
+const COMMAND_NAME = 'stats'
+const KEY_WIDTH = 13
+const TITLE = 'Session usage'
+
+/** The agent's live Session, falling back to the store when the handle omits it. */
+function sessionOf(ctx, agent) {
+  if (agent !== null && agent !== undefined && agent.session !== null && agent.session !== undefined) {
+    return agent.session
+  }
+  const sessions = typeof ctx.get === 'function' ? ctx.get('sessions') : undefined
+  if (sessions === undefined || sessions === null || typeof sessions.get !== 'function') return undefined
+  if (agent === null || agent === undefined) return undefined
+  return sessions.get(agent.id)
+}
+
+/** A grouped integer, the way the report prints every count. */
+function amount(value) {
+  const count = Number(value)
+  return Number.isFinite(count) ? Math.round(count).toLocaleString('en-US') : '0'
+}
+
+/** The largest unit a wall time needs, plus the next one when it carries. */
+function formatDuration(milliseconds) {
+  const total = Math.max(0, Math.floor((Number(milliseconds) || 0) / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor(total / 60) % 60
+  const seconds = total % 60
+  if (hours > 0) return hours + 'h ' + minutes + 'm'
+  if (minutes > 0) return minutes + 'm ' + seconds + 's'
+  return seconds + 's'
+}
+
+/** One row: a label padded to the report's column, then the value. */
+function row(label, value) {
+  return label.padEnd(KEY_WIDTH) + value
+}
+
+/** The provider/model currently routed for this Session, when it reports one. */
+function routeOf(session) {
+  try {
+    const context = typeof session.requestContext === 'function' ? session.requestContext() : undefined
+    if (context === null || context === undefined) return undefined
+    const provider = typeof context.provider === 'string' ? context.provider : ''
+    const model = typeof context.model === 'string' ? context.model : ''
+    if (provider === '' && model === '') return undefined
+    return {
+      label: provider === '' ? model : (model === '' ? provider : provider + '/' + model),
+      contextWindow: typeof context.contextWindow === 'number' ? context.contextWindow : undefined,
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Build the report text from one projection snapshot.
+ * @param session - the Session the report describes.
+ * @param values - the `tokenUsage`, `contextPressure`, and `sessionStats` views.
+ * @param now - wall clock read once, so the duration is one number.
+ * @returns the report, one line per field group.
+ */
+function buildReport(session, values, now) {
+  const usage = values.tokenUsage === undefined ? {} : values.tokenUsage
+  const pressure = values.contextPressure === undefined ? {} : values.contextPressure
+  const stats = values.sessionStats === undefined ? {} : values.sessionStats
+  const route = routeOf(session)
+
+  const input = Number(usage.uncachedInputTokens) || 0
+  const output = Number(usage.outputTokens) || 0
+  const cacheRead = Number(usage.cacheReadTokens) || 0
+  const cacheWrite = Number(usage.cacheWriteTokens) || 0
+  const total = input + output + cacheRead + cacheWrite
+
+  const createdAt = session.header === undefined || session.header === null ? undefined : session.header.createdAt
+  const started = typeof createdAt === 'number' ? createdAt : undefined
+
+  const lines = [TITLE]
+  if (route !== undefined) lines.push(row('Model', route.label))
+  if (started !== undefined) lines.push(row('Duration', formatDuration(now - started)))
+  lines.push(row('Turns', amount(stats.turns)))
+  lines.push(row('Steps', amount(stats.steps)))
+
+  lines.push('')
+  if (total === 0) {
+    lines.push(row('Tokens', 'no requests recorded yet'))
+  } else {
+    lines.push(row('Tokens', amount(total)))
+    lines.push(row('Input', amount(input)))
+    lines.push(row('Output', amount(output)))
+    lines.push(row('Cache read', amount(cacheRead)))
+    lines.push(row('Cache write', amount(cacheWrite)))
+  }
+
+  lines.push('')
+  const used = pressure.projectedTokens !== undefined ? pressure.projectedTokens : pressure.pressureTokens
+  const capacity = pressure.contextWindow !== undefined ? pressure.contextWindow : (route === undefined ? undefined : route.contextWindow)
+  if (typeof used === 'number' && typeof capacity === 'number' && capacity > 0) {
+    const percent = Math.round((used / capacity) * 1000) / 10
+    lines.push(row('Context', amount(used) + ' / ' + amount(capacity) + ' (' + percent + '%)'))
+  } else if (typeof used === 'number') {
+    lines.push(row('Context', amount(used)))
+  } else {
+    lines.push(row('Context', 'not measured yet'))
+  }
+
+  if (typeof stats.llmMs === 'number' && stats.llmMs > 0) lines.push(row('Model time', formatDuration(stats.llmMs)))
+  if (typeof stats.toolMs === 'number' && stats.toolMs > 0) lines.push(row('Tool time', formatDuration(stats.toolMs)))
+
+  return lines.join('\n')
+}
+
+/**
+ * Read the three projection views the report needs.
+ * @param ctx - Host context carrying the projection registry.
+ * @param session - Session to read.
+ * @returns the views, or an error result when this assembly cannot serve them.
+ */
+function readStats(ctx, session) {
+  const projections = typeof ctx.get === 'function' ? ctx.get('sessionProjections') : undefined
+  if (projections === undefined || projections === null || typeof projections.snapshot !== 'function') {
+    return { error: 'Session usage is unavailable: this Host has no session projection registry.' }
+  }
+  try {
+    const snapshot = projections.snapshot(session, ['tokenUsage', 'contextPressure', 'sessionStats'])
+    const values = snapshot === null || snapshot === undefined || snapshot.values === undefined ? {} : snapshot.values
+    return { values }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    return { error: 'Session usage could not be read: ' + reason }
+  }
+}
+
+/** The command handler: one text result, never a model turn. */
+function executeStatsCommand(ctx, invocation) {
+  const agent = invocation === null || invocation === undefined ? undefined : invocation.agent
+  const session = sessionOf(ctx, agent)
+  if (session === undefined || session === null) {
+    return { kind: 'error', text: 'No live Session is attached to this command.' }
+  }
+  const read = readStats(ctx, session)
+  if (read.error !== undefined) return { kind: 'error', text: read.error }
+  try {
+    return { kind: 'success', text: buildReport(session, read.values, Date.now()) }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    return { kind: 'error', text: 'Session usage could not be formatted: ' + reason }
+  }
+}
+
+/** Register `/stats` for every composed command adapter. */
+function mountCommand(ctx) {
+  if (typeof ctx.inject !== 'function') return
+  ctx.inject(['commands'], (commandCtx) => {
+    commandCtx.commands.register({
+      name: COMMAND_NAME,
+      description: 'Show total session usage, context, and timings',
+      handler: (invocation) => executeStatsCommand(ctx, invocation),
+    })
+  })
+}
+
 /**
  * Mount the route. The Host service registry is read lazily: a Host without a
  * Web server simply has no control, and the Client falls back to a read-only
  * section instead of failing to load.
  */
 export function apply(ctx) {
+  mountCommand(ctx)
+
   const server = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
   if (server === undefined || server === null || typeof server.register !== 'function') return
 
