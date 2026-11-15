@@ -763,9 +763,13 @@ function mountCommand(ctx) {
 }
 
 /**
- * Mount the route. The Host service registry is read lazily: a Host without a
- * Web server simply has no control, and the Client falls back to a read-only
- * section instead of failing to load.
+ * Mount the routes.
+ *
+ * `webServer` is awaited through `ctx.inject`, never read once with `ctx.get`:
+ * on a cold start this plugin can activate before the web carrier's fiber has
+ * published the service, and an eager lookup then quietly skips registration
+ * for the whole process. Depending on it makes the routes appear whenever the
+ * carrier arrives, and keeps a Host without one simply route-less.
  */
 export function apply(ctx) {
   mountCommand(ctx)
@@ -775,11 +779,13 @@ export function apply(ctx) {
     USAGE.disposed = true
   }, 'claude-style: usage lifetime')
 
-  const server = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
-  if (server === undefined || server === null || typeof server.register !== 'function') return
+  if (typeof ctx.inject !== 'function') return
 
-  ctx.effect(() => {
-    const dispose = server.register({
+  ctx.inject(['webServer'], (webCtx) => {
+    const server = webCtx.webServer
+    if (server === undefined || server === null || typeof server.register !== 'function') return
+
+    webCtx.effect(() => server.register({
       kind: 'exact',
       path: ROUTE,
       handler: (req, res) => {
@@ -828,17 +834,12 @@ export function apply(ctx) {
           }
         })
       },
-    })
-    return () => {
-      if (typeof dispose === 'function') dispose()
-    }
-  }, 'claude-style: auto-compact route')
+    }), 'claude-style: auto-compact route')
 
-  /* The roll-up route. It answers from the cache immediately and starts a pass
-     only when the cache is empty, stale, or asked to rescan, so polling never
-     turns into repeated corpus reads. */
-  ctx.effect(() => {
-    const dispose = server.register({
+    /* The roll-up route. It answers from the cache immediately and starts a
+       pass only when the cache is empty, stale, or asked to rescan, so polling
+       never turns into repeated corpus reads. */
+    webCtx.effect(() => server.register({
       kind: 'exact',
       path: USAGE_ROUTE,
       handler: (req, res) => {
@@ -860,9 +861,6 @@ export function apply(ctx) {
         if (!USAGE.refreshing && (forced || stale)) void refreshUsage(ctx, forced)
         send(res, 200, Object.assign({ version: VERSION }, aggregateUsage(now)))
       },
-    })
-    return () => {
-      if (typeof dispose === 'function') dispose()
-    }
-  }, 'claude-style: usage route')
+    }), 'claude-style: usage route')
+  })
 }

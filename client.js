@@ -357,6 +357,7 @@ window.__ModuleLoader__.load({
       '.cc-usage-note-inline{color:var(--dsw-alias-label-caption);font-size:10px}' +
       '.cc-usage-note{color:var(--dsw-alias-label-tertiary);font-size:11px}' +
       '.cc-usage-text{margin:0;color:var(--dsw-alias-label-secondary);font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:12px;line-height:1.6;white-space:pre;overflow-x:auto}' +
+      '.cc-usage-fallback{display:flex;flex-direction:column;gap:6px}' +
       '.cc-usage-split{display:flex;height:7px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-layer-3)}' +
       '.cc-usage-seg{height:100%;min-width:1px}' +
       '.cc-usage-input{background:#d97757}' +
@@ -1427,7 +1428,9 @@ window.__ModuleLoader__.load({
             ? h('span', { className: 'cc-usage-note' }, t('usage.loading'))
             : (fallback === ''
               ? h('span', { className: 'cc-usage-note' }, error)
-              : h('pre', { className: 'cc-usage-text' }, fallback)),
+              : h('div', { className: 'cc-usage-fallback' },
+                h('span', { className: 'cc-usage-note' }, error),
+                h('pre', { className: 'cc-usage-text' }, fallback))),
         );
       }
 
