@@ -68,6 +68,8 @@ window.__ModuleLoader__.load({
     const SEND_ATTR = 'data-cc-sending';
     const CONTEXT_TAB_ID = 'claude-style-deepseek/context';
     const CONTEXT_TAB_KIND = 'cc-context';
+    const USAGE_TAB_ID = 'claude-style-deepseek/usage';
+    const USAGE_TAB_KIND = 'cc-usage';
     const BRAND_TEXT_PROPERTY = '--cc-brand-text';
 
     /* A twelve-ray mark, drawn in code rather than shipped as a file: the
@@ -334,18 +336,54 @@ window.__ModuleLoader__.load({
       '.cc-set-hint{margin:0;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:11px}' +
       '.cc-set-hint code{font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:11px;padding:0 3px;border-radius:3px;background:var(--dsw-alias-markdown-inline-code)}' +
 
-      /* ---- the /stats card ------------------------------------------------
-         The command settles one text report; this card is that report, not a
-         second measurement. It stays open so the figures are readable without
-         a click, and folds back to one row when the reader wants it gone. */
-      '.cc-stats{margin:6px 0;border:.5px solid var(--dsw-alias-border-l2);border-radius:10px;overflow:hidden;background:var(--dsw-alias-bg-layer-2)}' +
-      '.cc-stats-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:6px 12px;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;text-align:left;cursor:pointer}' +
-      '.cc-stats-toggle:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
-      '.cc-stats-toggle:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}' +
-      '.cc-stats-title{font-weight:600}' +
-      '.cc-stats-hint{flex:none;color:var(--dsw-alias-label-caption);font-size:11px}' +
-      '.cc-stats-body{margin:0;padding:0 12px 10px;color:var(--dsw-alias-label-secondary);font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:12px;line-height:1.6;white-space:pre;overflow-x:auto}' +
-      '.cc-stats-body[data-error]{color:var(--dsw-alias-state-error-primary)}' +
+      /* ---- the usage board ------------------------------------------------
+         The statusline's density in this skin's palette: one bordered panel,
+         figures in the terminal face, proportional bars instead of numbers
+         alone. Nothing here reads the host's DOM, and every colour is either
+         a theme token or one of the four fixed hues below. */
+      '.cc-usage{--cc-usage-input:#d97757;--cc-usage-output:#3ecf9a;--cc-usage-read:#9a958a;--cc-usage-write:#4d8dff;display:flex;flex-direction:column;gap:11px;margin:6px 0;padding:12px 14px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-size:12px;line-height:1.45}' +
+      '.cc-usage-quiet{gap:8px}' +
+      '.cc-usage-head{display:flex;align-items:baseline;gap:8px}' +
+      '.cc-usage-title{font-size:13px;font-weight:600}' +
+      '.cc-usage-scope{color:var(--dsw-alias-label-caption);font-size:11px}' +
+      '.cc-usage-refresh{margin-left:auto;flex:none;padding:2px 9px;border:.5px solid var(--dsw-alias-border-l3);border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;line-height:1.6;cursor:pointer;font-variant-numeric:tabular-nums}' +
+      '.cc-usage-refresh:hover{background:var(--dsw-alias-interactive-bg-hover)}' +
+      '.cc-usage-refresh:disabled{opacity:.65;cursor:default}' +
+      '.cc-usage-refresh:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}' +
+      '.cc-usage-cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}' +
+      '.cc-usage-cell{display:flex;flex-direction:column;gap:1px;min-width:0}' +
+      '.cc-usage-value{font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:17px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}' +
+      '.cc-usage-label{color:var(--dsw-alias-label-tertiary);font-size:10px;letter-spacing:.09em;text-transform:uppercase}' +
+      '.cc-usage-note-inline{color:var(--dsw-alias-label-caption);font-size:10px}' +
+      '.cc-usage-note{color:var(--dsw-alias-label-tertiary);font-size:11px}' +
+      '.cc-usage-text{margin:0;color:var(--dsw-alias-label-secondary);font-family:var(--cc-mono,var(--ds-font-family-code,ui-monospace,monospace));font-size:12px;line-height:1.6;white-space:pre;overflow-x:auto}' +
+      '.cc-usage-split{display:flex;height:7px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-layer-3)}' +
+      '.cc-usage-seg{height:100%;min-width:1px}' +
+      '.cc-usage-input{background:#d97757}' +
+      '.cc-usage-output{background:#3ecf9a}' +
+      '.cc-usage-cache{background:#9a958a}' +
+      '.cc-usage-write{background:#4d8dff}' +
+      '.cc-usage-legend{display:flex;flex-wrap:wrap;gap:3px 14px;color:var(--dsw-alias-label-secondary);font-size:11px;font-variant-numeric:tabular-nums}' +
+      '.cc-usage-key{display:inline-flex;align-items:center;gap:6px}' +
+      '.cc-usage-dot{flex:none;width:7px;height:7px;border-radius:2px}' +
+      '.cc-usage-days{display:flex;flex-direction:column;gap:5px}' +
+      '.cc-usage-section{display:flex;align-items:baseline;justify-content:space-between;gap:8px;color:var(--dsw-alias-label-tertiary);font-size:10px;letter-spacing:.09em;text-transform:uppercase}' +
+      '.cc-usage-section-value{color:var(--dsw-alias-label-secondary);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}' +
+      '.cc-usage-columns{display:flex;align-items:flex-end;gap:3px;height:44px}' +
+      '.cc-usage-col{flex:1 1 0;min-width:0;display:flex;align-items:flex-end;height:100%}' +
+      '.cc-usage-fill{width:100%;min-height:0;border-radius:2px 2px 0 0;background:color-mix(in srgb,#d97757 45%,transparent)}' +
+      '.cc-usage-col[data-today] .cc-usage-fill{background:#d97757}' +
+      '.cc-usage-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}' +
+      '.cc-usage-column{display:flex;flex-direction:column;gap:4px;min-width:0}' +
+      '.cc-usage-row{display:flex;align-items:center;gap:8px;min-width:0;font-size:11.5px}' +
+      '.cc-usage-name{flex:0 0 42%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}' +
+      '.cc-usage-bar{flex:1 1 auto;height:5px;border-radius:999px;background:var(--dsw-alias-bg-layer-3);overflow:hidden}' +
+      '.cc-usage-bar-fill{display:block;height:100%;border-radius:999px;background:color-mix(in srgb,#d97757 62%,transparent)}' +
+      '.cc-usage-row-value{flex:none;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}' +
+      '.cc-usage-now{display:flex;flex-wrap:wrap;gap:3px 12px;padding-top:8px;border-top:.5px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:11px}' +
+      '.cc-usage-now b{color:var(--dsw-alias-label-primary);font-weight:600;font-variant-numeric:tabular-nums}' +
+      '.cc-usage-now-label{color:var(--dsw-alias-label-caption);letter-spacing:.06em;text-transform:uppercase;font-size:10px}' +
+      '@media (max-width:560px){.cc-usage-cells{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-usage-grid{grid-template-columns:minmax(0,1fr)}.cc-usage-columns{height:34px}}' +
       '@media (prefers-reduced-motion:reduce){.cc-set-switch,.cc-set-switch::after,.cc-set-option{transition:none}}';
 
     /**
@@ -531,6 +569,35 @@ window.__ModuleLoader__.load({
       'stats.hide': 'Hide',
       'stats.running': 'Reading session usage',
       'stats.failed': 'Session usage failed',
+      'usage.title': 'Usage',
+      'usage.scope': 'across all sessions',
+      'usage.tokens': 'tokens',
+      'usage.calls': 'calls',
+      'usage.turns': 'turns',
+      'usage.sessions': 'sessions',
+      'usage.subagent': 'subagent',
+      'usage.input': 'input',
+      'usage.output': 'output',
+      'usage.cacheRead': 'cache read',
+      'usage.cacheWrite': 'cache write',
+      'usage.days': 'last 14 days',
+      'usage.today': 'today',
+      'usage.models': 'models',
+      'usage.recent': 'recent sessions',
+      'usage.thisSession': 'this session',
+      'usage.thisInput': 'in',
+      'usage.thisOutput': 'out',
+      'usage.thisCache': 'cache',
+      'usage.thisTurns': 'turns',
+      'usage.thisContext': 'context',
+      'usage.refresh': 'refresh',
+      'usage.scanning': 'scanning',
+      'usage.loading': 'Reading the usage roll-up...',
+      'usage.unavailable': 'This window cannot reach the usage route. Restart DeepSeek Harness to load it.',
+      'usage.empty': 'No billed work recorded yet.',
+      'usage.noModels': 'No model calls yet.',
+      'usage.noSessions': 'No sessions yet.',
+      'usage.guide': 'Tokens across every session.',
       'label.title': 'Claude Style',
     };
 
@@ -597,6 +664,35 @@ window.__ModuleLoader__.load({
       'stats.hide': '收起',
       'stats.running': '正在读取会话用量',
       'stats.failed': '会话用量读取失败',
+      'usage.title': '用量',
+      'usage.scope': '全部会话',
+      'usage.tokens': '令牌',
+      'usage.calls': '调用',
+      'usage.turns': '轮次',
+      'usage.sessions': '会话',
+      'usage.subagent': '子代理',
+      'usage.input': '输入',
+      'usage.output': '输出',
+      'usage.cacheRead': '缓存读',
+      'usage.cacheWrite': '缓存写',
+      'usage.days': '最近 14 天',
+      'usage.today': '今天',
+      'usage.models': '模型',
+      'usage.recent': '最近会话',
+      'usage.thisSession': '本会话',
+      'usage.thisInput': '输入',
+      'usage.thisOutput': '输出',
+      'usage.thisCache': '缓存',
+      'usage.thisTurns': '轮次',
+      'usage.thisContext': '上下文',
+      'usage.refresh': '刷新',
+      'usage.scanning': '扫描中',
+      'usage.loading': '正在读取用量汇总...',
+      'usage.unavailable': '当前窗口无法访问用量路由，请重启 DeepSeek Harness。',
+      'usage.empty': '还没有记录到计费调用。',
+      'usage.noModels': '还没有模型调用。',
+      'usage.noSessions': '还没有会话。',
+      'usage.guide': '所有会话的令牌用量。',
       'label.title': 'Claude 风格',
     };
 
@@ -1250,53 +1346,233 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /* The first line the Host report opens with is the card's own header. */
-    const STATS_TITLE_LINE = 'Session usage';
+    /** A token count at board scale: 2.32B, 380M, 12.4k, 918. */
+    function formatBig(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number) || number <= 0) return '0';
+      const units = [[1000000000, 'B'], [1000000, 'M'], [1000, 'k']];
+      for (let index = 0; index < units.length; index += 1) {
+        if (number >= units[index][0]) return String(Math.round((number / units[index][0]) * 10) / 10) + units[index][1];
+      }
+      return String(Math.round(number));
+    }
+
+    /** A grouped integer, for counts that read better exact. */
+    function formatExact(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return '0';
+      return Math.round(number).toLocaleString('en-US');
+    }
+
+    /** The last path segment of a workspace directory, whatever the separator. */
+    function baseName(path) {
+      if (typeof path !== 'string' || path === '') return '';
+      const parts = path.split(/[\\/]/).filter((part) => part !== '');
+      return parts.length === 0 ? path : parts[parts.length - 1];
+    }
 
     /**
-     * The `/stats` row.
+     * The all-session usage board.
      *
-     * The Host command settles one text report and this card renders exactly
-     * that text, so a row read months later still shows the Session it
-     * described instead of re-measuring today's. The report's opening title
-     * line becomes the card header, so it is never printed twice.
+     * Every figure comes from `/claude-style/usage`, the Host's cached roll-up
+     * over the stored Session logs; the board itself measures nothing. A pass
+     * still running is reported in the header and polled, so a first-ever scan
+     * fills the panel instead of showing an empty one. The last section is the
+     * live Session, read from the same projections the composer meter uses.
+     *
+     * `fallback` is the settled `/stats` text: a Host that never loaded the
+     * route (an older process) still leaves a readable report in the row.
+     */
+    function UsageBoard(props) {
+      const t = typeof props.t === 'function' ? props.t : (key) => key;
+      const [data, setData] = React.useState(null);
+      const [error, setError] = React.useState('');
+      const [nonce, setNonce] = React.useState(0);
+
+      React.useEffect(() => {
+        let live = true;
+        let timer = 0;
+        const load = (force) => {
+          fetch('/claude-style/usage' + (force ? '?refresh=1' : ''))
+            .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+            .then((json) => {
+              if (!live) return;
+              setError('');
+              setData(json);
+              const refresh = json === null || json === undefined ? undefined : json.refresh;
+              if (refresh !== undefined && refresh !== null && refresh.running === true) {
+                timer = window.setTimeout(() => load(false), 900);
+              }
+            })
+            .catch(() => {
+              if (live) setError(t('usage.unavailable'));
+            });
+        };
+        load(nonce > 0);
+        return () => {
+          live = false;
+          if (timer !== 0) window.clearTimeout(timer);
+        };
+      }, [nonce]);
+
+      const fallback = typeof props.fallback === 'string' ? props.fallback.trim() : '';
+      if (data === null) {
+        return h(
+          'div',
+          { className: 'cc-usage cc-usage-quiet' },
+          h('div', { className: 'cc-usage-head' },
+            h('span', { className: 'cc-usage-title' }, t('usage.title')),
+            h('span', { className: 'cc-usage-scope' }, t('usage.scope'))),
+          error === ''
+            ? h('span', { className: 'cc-usage-note' }, t('usage.loading'))
+            : (fallback === ''
+              ? h('span', { className: 'cc-usage-note' }, error)
+              : h('pre', { className: 'cc-usage-text' }, fallback)),
+        );
+      }
+
+      const totals = data.totals;
+      const refresh = data.refresh === undefined || data.refresh === null ? {} : data.refresh;
+      const running = refresh.running === true;
+      const scanning = running
+        ? t('usage.scanning') + ' ' + formatExact(refresh.scanned) + '/' + formatExact(refresh.pending)
+        : t('usage.refresh');
+
+      const cells = [
+        { key: 'tokens', value: formatBig(totals.total), label: t('usage.tokens'), note: '' },
+        { key: 'calls', value: formatExact(totals.calls), label: t('usage.calls'), note: '' },
+        { key: 'turns', value: formatExact(totals.turns), label: t('usage.turns'), note: '' },
+        {
+          key: 'sessions',
+          value: formatExact(totals.sessions),
+          label: t('usage.sessions'),
+          note: totals.subagentSessions > 0 ? '+' + formatExact(totals.subagentSessions) + ' ' + t('usage.subagent') : '',
+        },
+      ];
+
+      const split = [
+        { key: 'input', label: t('usage.input'), tokens: totals.input, cls: 'cc-usage-input' },
+        { key: 'output', label: t('usage.output'), tokens: totals.output, cls: 'cc-usage-output' },
+        { key: 'cacheRead', label: t('usage.cacheRead'), tokens: totals.cacheRead, cls: 'cc-usage-cache' },
+        { key: 'cacheWrite', label: t('usage.cacheWrite'), tokens: totals.cacheWrite, cls: 'cc-usage-write' },
+      ].filter((part) => Number(part.tokens) > 0);
+      const splitTotal = split.reduce((sum, part) => sum + Number(part.tokens), 0) || 1;
+
+      const days = Array.isArray(data.days) ? data.days : [];
+      const dayMax = days.reduce((max, day) => (Number(day.tokens) > max ? Number(day.tokens) : max), 0) || 1;
+      const today = days.length === 0 ? 0 : Number(days[days.length - 1].tokens);
+
+      const models = Array.isArray(data.models) ? data.models : [];
+      const modelMax = models.reduce((max, row) => (Number(row.tokens) > max ? Number(row.tokens) : max), 0) || 1;
+      const recent = Array.isArray(data.recent) ? data.recent : [];
+      const recentMax = recent.reduce((max, row) => (Number(row.tokens) > max ? Number(row.tokens) : max), 0) || 1;
+
+      const bar = (tokens, max) => Math.max(2, Math.round((Number(tokens) / max) * 100)) + '%';
+
+      /* The live Session, from the meter's own projections. Absent in a host
+         that publishes no projections, which just drops the row. */
+      const usageNow = typeof props.useProjection === 'function' ? props.useProjection('tokenUsage') : undefined;
+      const statsNow = typeof props.useProjection === 'function' ? props.useProjection('sessionStats') : undefined;
+      const pressureNow = typeof props.useProjection === 'function' ? props.useProjection('contextPressure') : undefined;
+      const now = [];
+      if (usageNow !== undefined && usageNow !== null) {
+        now.push(h('span', { key: 'io' },
+          t('usage.thisInput') + ' ', h('b', {}, formatBig(usageNow.uncachedInputTokens)),
+          '  ' + t('usage.thisOutput') + ' ', h('b', {}, formatBig(usageNow.outputTokens))));
+        const promptSide = Number(usageNow.cacheReadTokens) || 0;
+        if (promptSide > 0) now.push(h('span', { key: 'cache' }, t('usage.thisCache') + ' ', h('b', {}, formatBig(promptSide))));
+      }
+      if (statsNow !== undefined && statsNow !== null) {
+        now.push(h('span', { key: 'turns' }, t('usage.thisTurns') + ' ', h('b', {}, formatExact(statsNow.turns))));
+      }
+      if (pressureNow !== undefined && pressureNow !== null) {
+        const used = pressureNow.projectedTokens === undefined ? pressureNow.pressureTokens : pressureNow.projectedTokens;
+        if (typeof used === 'number' && typeof pressureNow.contextWindow === 'number' && pressureNow.contextWindow > 0) {
+          const percent = Math.min(100, Math.round((used / pressureNow.contextWindow) * 100));
+          now.push(h('span', { key: 'ctx' }, t('usage.thisContext') + ' ', h('b', {}, percent + '%')));
+        }
+      }
+
+      return h(
+        'section',
+        { className: 'cc-usage' },
+        h('header', { className: 'cc-usage-head' },
+          h('span', { className: 'cc-usage-title' }, t('usage.title')),
+          h('span', { className: 'cc-usage-scope' }, t('usage.scope')),
+          h('button', {
+            type: 'button',
+            className: 'cc-usage-refresh',
+            disabled: running,
+            onClick: () => setNonce((value) => value + 1),
+          }, scanning)),
+        totals.calls === 0
+          ? h('span', { className: 'cc-usage-note' }, t('usage.empty'))
+          : h('div', { className: 'cc-usage-cells' }, cells.map((cell) => h('div', { key: cell.key, className: 'cc-usage-cell' },
+            h('span', { className: 'cc-usage-value' }, cell.value),
+            h('span', { className: 'cc-usage-label' }, cell.label),
+            cell.note === '' ? null : h('span', { className: 'cc-usage-note-inline' }, cell.note),
+          ))),
+        split.length === 0 ? null : h('div', { className: 'cc-usage-split' }, split.map((part) => h('span', {
+          key: part.key,
+          className: 'cc-usage-seg ' + part.cls,
+          style: { width: (Number(part.tokens) / splitTotal) * 100 + '%' },
+        }))),
+        split.length === 0 ? null : h('div', { className: 'cc-usage-legend' }, split.map((part) => h('span', { key: part.key, className: 'cc-usage-key' },
+          h('span', { className: 'cc-usage-dot ' + part.cls }),
+          h('span', {}, part.label + ' ' + formatBig(part.tokens)),
+        ))),
+        days.length === 0 ? null : h('div', { className: 'cc-usage-days' },
+          h('div', { className: 'cc-usage-section' },
+            h('span', {}, t('usage.days')),
+            h('span', { className: 'cc-usage-section-value' }, t('usage.today') + ' ' + formatBig(today))),
+          h('div', { className: 'cc-usage-columns' }, days.map((day, index) => h('span', {
+            key: day.day,
+            className: 'cc-usage-col',
+            title: day.day + '  ' + formatExact(day.tokens),
+            'data-today': index === days.length - 1 ? '' : undefined,
+          }, h('span', {
+            className: 'cc-usage-fill',
+            style: { height: Number(day.tokens) === 0 ? '0%' : Math.max(8, Math.round((Number(day.tokens) / dayMax) * 100)) + '%' },
+          })))),
+        ),
+        h('div', { className: 'cc-usage-grid' },
+          h('div', { className: 'cc-usage-column' },
+            h('div', { className: 'cc-usage-section' }, h('span', {}, t('usage.models'))),
+            models.length === 0
+              ? h('span', { className: 'cc-usage-note' }, t('usage.noModels'))
+              : models.map((row) => h('div', { key: row.model, className: 'cc-usage-row' },
+                h('span', { className: 'cc-usage-name', title: row.model }, row.model),
+                h('span', { className: 'cc-usage-bar' }, h('span', { className: 'cc-usage-bar-fill', style: { width: bar(row.tokens, modelMax) } })),
+                h('span', { className: 'cc-usage-row-value' }, formatBig(row.tokens)),
+              )),
+          ),
+          h('div', { className: 'cc-usage-column' },
+            h('div', { className: 'cc-usage-section' }, h('span', {}, t('usage.recent'))),
+            recent.length === 0
+              ? h('span', { className: 'cc-usage-note' }, t('usage.noSessions'))
+              : recent.map((row) => h('div', { key: row.id, className: 'cc-usage-row' },
+                h('span', { className: 'cc-usage-name', title: row.cwd === '' ? row.id : row.cwd }, baseName(row.cwd) || row.id.slice(0, 10)),
+                h('span', { className: 'cc-usage-bar' }, h('span', { className: 'cc-usage-bar-fill', style: { width: bar(row.tokens, recentMax) } })),
+                h('span', { className: 'cc-usage-row-value' }, formatBig(row.tokens)),
+              )),
+          ),
+        ),
+        now.length === 0 ? null : h('div', { className: 'cc-usage-now' },
+          h('span', { className: 'cc-usage-now-label' }, t('usage.thisSession')),
+          now,
+        ),
+      );
+    }
+
+    /**
+     * The `/stats` row: the usage board, with the settled report as the
+     * fallback a Host without the roll-up route leaves behind.
      */
     function StatsCard(props) {
-      const t = typeof props.t === 'function' ? props.t : (key) => key;
       const node = props.node;
       const outcome = node === null || node === undefined ? null : node.outcome;
       const text = outcome !== null && typeof outcome.text === 'string' ? outcome.text : '';
-      const running = outcome === null;
-      const failed = outcome !== null && outcome.kind === 'error';
-      const [open, setOpen] = React.useState(true);
-
-      const lines = text.split('\n');
-      const body = lines.length > 1 && lines[0].trim() === STATS_TITLE_LINE
-        ? lines.slice(1).join('\n').trim()
-        : text.trim();
-      const title = running ? t('stats.running') : (failed ? t('stats.failed') : t('stats.title'));
-
-      return h(
-        'div',
-        { className: 'cc-stats' },
-        h(
-          'button',
-          {
-            type: 'button',
-            className: 'cc-stats-toggle',
-            'aria-expanded': body !== '' && open,
-            'aria-label': title,
-            onClick: () => setOpen(!open),
-          },
-          h('span', { className: 'cc-stats-title' }, title),
-          body === ''
-            ? null
-            : h('span', { className: 'cc-stats-hint' }, open ? t('stats.hide') : t('stats.show')),
-        ),
-        body !== '' && open
-          ? h('pre', { className: 'cc-stats-body', 'data-error': failed ? '' : undefined }, body)
-          : null,
-      );
+      return h(UsageBoard, Object.assign({}, props, { fallback: text }));
     }
 
     /** One text row: a field that commits on blur or Enter, so typing does not repaint the transcript per keystroke. */
@@ -1726,27 +2002,40 @@ window.__ModuleLoader__.load({
       const sidebarTabs = typeof ctx.get === 'function' ? ctx.get('sidebarRightTabs') : undefined;
       if (sidebarTabs && typeof sidebarTabs.register === 'function') {
         ctx.effect(() => {
-          let disposeType = null;
-          let disposeBody = null;
-          try {
-            disposeType = sidebarTabs.register({
-              id: CONTEXT_TAB_ID,
-              kind: CONTEXT_TAB_KIND,
-              title: () => label('context.title'),
-              guide: [{ id: 'context', title: label('context.title'), description: label('context.guide') }],
-            });
-            disposeBody = ctx.slots.register(
-              { name: 'sidebar.right.pane.tab', key: CONTEXT_TAB_ID },
-              (props) => h(ContextPanel, Object.assign({}, props, { t: label })),
-            );
-          } catch (error) {
-            /* a host without the right sidebar keeps the rest of the skin */
-          }
-          return () => {
-            if (disposeBody !== null) disposeBody();
-            if (disposeType !== null) disposeType();
+          const disposers = [];
+          const mount = (id, kind, title, guide, body) => {
+            try {
+              disposers.push(sidebarTabs.register({
+                id,
+                kind,
+                title: () => label(title),
+                guide: [{ id: kind, title: label(title), description: label(guide) }],
+              }));
+              disposers.push(ctx.slots.register({ name: 'sidebar.right.pane.tab', key: id }, body));
+            } catch (error) {
+              /* a host without this seat keeps the rest of the skin */
+            }
           };
-        }, 'claude-flow: context tab');
+          mount(
+            CONTEXT_TAB_ID,
+            CONTEXT_TAB_KIND,
+            'context.title',
+            'context.guide',
+            (props) => h(ContextPanel, Object.assign({}, props, { t: label })),
+          );
+          mount(
+            USAGE_TAB_ID,
+            USAGE_TAB_KIND,
+            'usage.title',
+            'usage.guide',
+            (props) => h(UsageBoard, Object.assign({}, props, { t: label })),
+          );
+          return () => {
+            for (const dispose of disposers.reverse()) {
+              if (typeof dispose === 'function') dispose();
+            }
+          };
+        }, 'claude-flow: right sidebar tabs');
       }
 
       /* ---- the /stats card in the transcript ------------------------------

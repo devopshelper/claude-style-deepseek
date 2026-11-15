@@ -54,8 +54,9 @@ In the transcript:
   the checked row takes an accent wash, and the **Effort** screen opens with one line on what higher effort costs
 - a **Context** tab in the right sidebar: percent and tokens used, a bar split into messages, tools and system
   prompt, plus free space and any unaccounted remainder, read from the token meter's own projections
-- **`/stats`** prints the whole Session: cumulative tokens by bucket, context occupancy, turn and step
-  counts, model and tool time, in a card that stays open until you fold it
+- **`/stats`** opens a usage board: tokens across every stored Session, a day chart, the
+  model split, the busiest recent Sessions, and the live Session's own figures underneath.
+  The same board is a **Usage** tab in the right sidebar
 
 Step folding itself is the Harness's **Work details** setting (`Settings -> General ->
 Work details`). This plugin only restyles the summary line and its body.
@@ -241,10 +242,60 @@ Claude's context panel does:
 It reads the `contextPressure` and `contextBreakdown` client projections, so it agrees
 with the meter and stays live during a turn. Nothing is scraped from the host's DOM.
 
-## Session stats: `/stats`
+## Usage: `/stats`
 
-Type `/stats` in the composer. The command runs on the Host, reads the live Session, and
-settles one report in the transcript. Nothing is sent to the model.
+Type `/stats` in the composer. The command runs on the Host, reads the current Session and
+the all-session roll-up, and settles one report. Nothing is sent to the model. The
+transcript row paints the usage board over the same data.
+
+```text
+┌ Usage                                        across all sessions  refresh ┐
+│                                                                          │
+│  2.35B          9,739          510          148                          │
+│  TOKENS         CALLS          TURNS        SESSIONS                     │
+│                                        +13 subagent                      │
+│  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰                   │
+│  ● input 38.9M   ● output 8.5M   ● cache read 2.29B   ● cache write 652k │
+│                                                                          │
+│  LAST 14 DAYS                                                       TODAY 470.9M │
+│  ▁▂▅▃▇▁▁▄▆▂▁▃▅▆                                                          │
+│                                                                          │
+│  MODELS                          RECENT SESSIONS                         │
+│  deepseek-v4.1-flash  ▰▰▰▰  1.2B  DSH               ▰▰▰▰  252.4M          │
+│  ocg/deepseek-v4.1…   ▰▰▰    530M  open-seg          ▰▰▰▰  347.3M          │
+│  deepseek-flash       ▰▰▰    494M  open-seg (sub)    ▰▰    93.8M          │
+│                                                                          │
+│  THIS SESSION  in 1.2M  out 45.7k  cache 890.1k  turns 12  context 12%   │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Tokens** across every stored Session: uncached input, output, cache read and cache
+  write, split by share under the bar.
+- **Last 14 days** is billed tokens per local day; today's column is drawn in the accent.
+- **Models** and **Recent sessions** are ranked by tokens, with a bar each.
+- **This session** comes from the live projections (`tokenUsage`, `sessionStats`,
+  `contextPressure`), so it is the number the composer meter is already showing.
+
+### Where the all-session figures come from
+
+A Session cannot report the corpus, so the Host folds it: `/claude-style/usage` reads each
+stored Session through `sessionQuery.readSession`, folds the same provider samples the
+token meter counts (the last usage chunk of a settled assistant message, with a retried
+attempt replacing its own slot), and caches the result per Session.
+
+The cache is keyed by the stored log's size and event count, so a later pass re-reads only
+the Sessions that moved. A first run over 160 Sessions takes about half a minute; it runs
+in the background, one yield per Session, and the board polls it and shows `scanning
+12/161` instead of an empty panel. Every later load answers from
+`~/.dsh/storages/claude-style-deepseek/usage-cache.json` instantly.
+
+`refresh` in the header forces a full re-read. The same board is also a **Usage** tab in
+the right sidebar, so the corpus figures are one click away without running a command.
+
+### The per-session section
+
+The settled report still opens with the current Session, and a Client that never loaded
+the board (or a Host without the roll-up route) shows that text instead:
 
 ```text
 Session usage
@@ -259,29 +310,22 @@ Output          45,678
 Cache read     890,123
 Cache write     14,155
 
-Context       131,021 / 1,048,576 (12.5%)
-Model time    8m 2s
-Tool time     1m 31s
+Context      131,021 / 1,048,576 (12.5%)
+Model time   8m 2s
+Tool time    1m 31s
 ```
 
-- **Tokens** is the whole Session: every provider call adds its uncached input, output,
-  cache read and cache write. `Tokens` is the sum of the four rows under it.
-- **Context** is the same occupancy the composer meter shows, as a share of the routed
-  model's window.
+- **Tokens** is the whole Session; `Tokens` is the sum of the four rows under it.
+- **Context** is the same occupancy the composer meter shows.
 - **Turns** and **Steps** count closed steps out of the complete durable log, so
   compaction and paging never change them.
 - **Model time** and **Tool time** are the summed wall times for model calls and tool
   pairs.
 
-The report arrives in an open card: the header folds it to one row and back. The card
-renders the text the command settled rather than re-measuring, so a row read back later
-still shows the Session it described.
-
-Everything comes from projections the Host already folds (`tokenUsage`,
-`contextPressure`, `sessionStats`), so `/stats` cannot drift from the meter, the Context
-tab, or the session list. A Host without a command registry has no `/stats` and drops no
-other part of the skin; a Host without the projection registry answers with one error
-line instead of a wrong number.
+Both sections come from folds the Host already owns, so `/stats` cannot drift from the
+meter, the Context tab, or the session list. A Host without a command registry has no
+`/stats` and drops no other part of the skin; a Host without the projection registry
+answers with one error line instead of a wrong number.
 
 ## Tuning
 
@@ -329,10 +373,15 @@ sooner. The window steps only in the `Full` animation profile.
 - No Harness Client package is imported: `react` comes from the page's module table,
   every other control is markup and tokens.
 - `/stats` is a Host command registered through `ctx.inject(['commands'])`, so it exists
-  in every UI adapter that mounts a command registry and in none that does not. It reads
-  one projection snapshot and prints it; the Client half only takes over the row through
-  the `conversation.chat.commandview` slot, keyed by the command name, so an uninstalled
-  Client half still leaves a working text report.
+  in every UI adapter that mounts a command registry and in none that does not. Its text is
+  the durable record; the Client half paints the board over `/claude-style/usage` and
+  takes over the row through the `conversation.chat.commandview` slot, keyed by the command
+  name. An uninstalled Client half, or a Host that has not loaded the route yet, still
+  leaves a readable text report.
+- The corpus roll-up reads stored Sessions through `sessionQuery.readSession` and writes
+  one JSON cache under `~/.dsh/storages/claude-style-deepseek/`. It is the only place this
+  plugin reads anything other than its own files, and it never opens a Session log itself:
+  the storage format, its compression and its version stay the harness's business.
 
 ## Compatibility
 
