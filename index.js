@@ -30,6 +30,22 @@ const MAX_RATIO = 0.95
 const DEFAULT_RATIO = 0.8
 const BODY_LIMIT = 4096
 
+/**
+ * The bundle's own version, read once from the manifest beside this file.
+ *
+ * It is reported on the route so a stale Host is visible without guessing: an
+ * updated bundle whose files changed on disk but whose process kept the old
+ * module answers with the version it actually loaded.
+ */
+const VERSION = (() => {
+  try {
+    const manifest = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+    return typeof manifest.version === 'string' ? manifest.version : 'unknown'
+  } catch {
+    return 'unknown'
+  }
+})()
+
 /** The harness home, the same default the loader uses. */
 function dshHome() {
   const fromEnv = process.env.DSH_HOME
@@ -327,7 +343,7 @@ export function apply(ctx) {
 
         if (method === 'GET' || method === 'HEAD') {
           const state = readState()
-          send(res, 200, { enabled: state.enabled, threshold: state.threshold, profile: profileName() })
+          send(res, 200, { enabled: state.enabled, threshold: state.threshold, profile: profileName(), version: VERSION })
           return
         }
 
@@ -359,7 +375,7 @@ export function apply(ctx) {
           const threshold = Number.isFinite(requested) ? requested : (readState().threshold === null ? DEFAULT_RATIO : readState().threshold)
           const written = writeState(enabled, threshold)
           const live = applyLive(ctx, enabled, written)
-          send(res, 200, { enabled, threshold: enabled ? written : null, profile: profileName(), live })
+          send(res, 200, { enabled, threshold: enabled ? written : null, profile: profileName(), live, version: VERSION })
         }).catch(() => {
           try {
             send(res, 400, { error: 'unreadable body' })
