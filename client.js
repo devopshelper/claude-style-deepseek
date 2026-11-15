@@ -1416,6 +1416,15 @@ window.__ModuleLoader__.load({
         };
       }, [nonce]);
 
+      /* The live Session, from the meter's own projections. These hooks run
+         before the loading return: a hook after it would change the hook order
+         once the fetch lands, and the slot boundary abdicates a component that
+         throws mid-session ("Rendered more hooks than during the previous
+         render"), which left only the plain /stats text. */
+      const usageNow = typeof props.useProjection === 'function' ? props.useProjection('tokenUsage') : undefined;
+      const statsNow = typeof props.useProjection === 'function' ? props.useProjection('sessionStats') : undefined;
+      const pressureNow = typeof props.useProjection === 'function' ? props.useProjection('contextPressure') : undefined;
+
       const fallback = typeof props.fallback === 'string' ? props.fallback.trim() : '';
       if (data === null) {
         return h(
@@ -1472,11 +1481,6 @@ window.__ModuleLoader__.load({
 
       const bar = (tokens, max) => Math.max(2, Math.round((Number(tokens) / max) * 100)) + '%';
 
-      /* The live Session, from the meter's own projections. Absent in a host
-         that publishes no projections, which just drops the row. */
-      const usageNow = typeof props.useProjection === 'function' ? props.useProjection('tokenUsage') : undefined;
-      const statsNow = typeof props.useProjection === 'function' ? props.useProjection('sessionStats') : undefined;
-      const pressureNow = typeof props.useProjection === 'function' ? props.useProjection('contextPressure') : undefined;
       const now = [];
       if (usageNow !== undefined && usageNow !== null) {
         now.push(h('span', { key: 'io' },
@@ -2002,43 +2006,50 @@ window.__ModuleLoader__.load({
           return key;
         }
       };
-      const sidebarTabs = typeof ctx.get === 'function' ? ctx.get('sidebarRightTabs') : undefined;
-      if (sidebarTabs && typeof sidebarTabs.register === 'function') {
-        ctx.effect(() => {
-          const disposers = [];
-          const mount = (id, kind, title, guide, body) => {
-            try {
-              disposers.push(sidebarTabs.register({
-                id,
-                kind,
-                title: () => label(title),
-                guide: [{ id: kind, title: label(title), description: label(guide) }],
-              }));
-              disposers.push(ctx.slots.register({ name: 'sidebar.right.pane.tab', key: id }, body));
-            } catch (error) {
-              /* a host without this seat keeps the rest of the skin */
-            }
-          };
-          mount(
-            CONTEXT_TAB_ID,
-            CONTEXT_TAB_KIND,
-            'context.title',
-            'context.guide',
-            (props) => h(ContextPanel, Object.assign({}, props, { t: label })),
-          );
-          mount(
-            USAGE_TAB_ID,
-            USAGE_TAB_KIND,
-            'usage.title',
-            'usage.guide',
-            (props) => h(UsageBoard, Object.assign({}, props, { t: label })),
-          );
-          return () => {
-            for (const dispose of disposers.reverse()) {
-              if (typeof dispose === 'function') dispose();
-            }
-          };
-        }, 'claude-flow: right sidebar tabs');
+      /* The tab service may not exist yet when this module applies: the sidebar
+         package can load after this one. `ctx.inject` defers registration until
+         the service appears and drops it again when the service goes away. */
+      try {
+        if (typeof ctx.inject === 'function') {
+          ctx.inject(['sidebarRightTabs'], (scope) => {
+            const tabs = scope.sidebarRightTabs;
+            const disposers = [];
+            const mount = (id, kind, title, guide, body) => {
+              try {
+                disposers.push(tabs.register({
+                  id,
+                  kind,
+                  title: () => label(title),
+                  guide: [{ id: kind, title: label(title), description: label(guide) }],
+                }));
+                disposers.push(scope.slots.register({ name: 'sidebar.right.pane.tab', key: id }, body));
+              } catch (error) {
+                /* a host without this seat keeps the rest of the skin */
+              }
+            };
+            mount(
+              CONTEXT_TAB_ID,
+              CONTEXT_TAB_KIND,
+              'context.title',
+              'context.guide',
+              (props) => h(ContextPanel, Object.assign({}, props, { t: label })),
+            );
+            mount(
+              USAGE_TAB_ID,
+              USAGE_TAB_KIND,
+              'usage.title',
+              'usage.guide',
+              (props) => h(UsageBoard, Object.assign({}, props, { t: label })),
+            );
+            return () => {
+              for (const dispose of disposers.reverse()) {
+                if (typeof dispose === 'function') dispose();
+              }
+            };
+          });
+        }
+      } catch (error) {
+        /* a host without a right sidebar keeps the rest of the skin */
       }
 
       /* ---- the /stats card in the transcript ------------------------------
@@ -2047,16 +2058,13 @@ window.__ModuleLoader__.load({
          surface to declare the slot; a Host without it keeps the plain
          report the command already settled. */
       try {
-        ctx.effect(
-          () => ctx.slots.inject('conversation.chat.commandview', () =>
-            ctx.slots.register(
-              { name: 'conversation.chat.commandview', key: 'stats' },
-              (props) => h(StatsCard, Object.assign({}, props, {
-                t: typeof props.t === 'function' ? props.t : label,
-              })),
-            ),
+        ctx.slots.inject('conversation.chat.commandview', () =>
+          ctx.slots.register(
+            { name: 'conversation.chat.commandview', key: 'stats', locale: NS },
+            (props) => h(StatsCard, Object.assign({}, props, {
+              t: typeof props.t === 'function' ? props.t : label,
+            })),
           ),
-          'claude-flow: stats card',
         );
       } catch (error) {
         /* a host without the chat command slot keeps the plain report */
